@@ -1,0 +1,13 @@
+{
+  "name": "HAMODYBR Tools",
+  "short_name": "HAMODYBR",
+  "description": "Fast, free and private everyday tools.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0f1b",
+  "theme_color": "#6558f5",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
