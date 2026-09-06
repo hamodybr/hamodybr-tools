@@ -1,0 +1,60 @@
+name: Release HAMODYBR Tools V2
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release-v2:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Validate V2 JavaScript
+        run: node --check v2.js
+      - name: Attach V2 and refresh offline cache
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          css='<link rel="stylesheet" href="v2.css">'
+          js='<script src="v2.js"></script>'
+          if css not in s:
+              s=s.replace('</head>',css+'\n</head>')
+          if js not in s:
+              s=s.replace('</body>',js+'\n</body>')
+          p.write_text(s)
+
+          p=Path('v2.css')
+          s=p.read_text()
+          rule='.card.v2-cat-hide{display:none!important}'
+          if rule not in s:
+              s+='\n'+rule+'\n'
+          p.write_text(s)
+
+          p=Path('sw.js')
+          s=p.read_text()
+          s=s.replace("hamodybr-tools-v1","hamodybr-tools-v2")
+          old="const CORE=['./','./index.html','./manifest.webmanifest','./icon.svg'];"
+          new="const CORE=['./','./index.html','./manifest.webmanifest','./icon.svg','./v2.css','./v2.js'];"
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+      - name: Commit V2 release
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html v2.css sw.js
+          if git diff --cached --quiet; then
+            echo "V2 already attached"
+          else
+            git commit -m "feat: activate HAMODYBR Tools V2"
+            git push
+          fi
