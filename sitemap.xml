@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://hamodybr.github.io/hamodybr-tools/</loc></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/compress-image/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/resize-image/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/convert-image/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/image-to-pdf/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/merge-pdf/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/split-pdf/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/qr-code/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/password-generator/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/word-counter/</loc><lastmod>2026-09-07</lastmod></url>
+  <url><loc>https://hamodybr.github.io/hamodybr-tools/text-cleaner/</loc><lastmod>2026-09-07</lastmod></url>
 </urlset>
