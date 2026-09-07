@@ -1,6 +1,17 @@
 const CACHE='hamodybr-tools-v2-4';
 const FALLBACK='./index.html';
-const CORE=['./index.html','./manifest.webmanifest','./icon.svg','./v2.css','./v2.js','./v2.1-ios-multipicker.js'];
+const CORE=[
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './v2.css?v=220',
+  './v2.js?v=220',
+  './v2.1-ios-multipicker.js?v=220',
+  './v2.4-links.css?v=240',
+  './v2.4-links.js?v=240',
+  './route-loader.js?v=230'
+];
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
