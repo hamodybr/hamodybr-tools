@@ -1,0 +1,51 @@
+name: Release HAMODYBR Tools V2.1
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release-v2-1:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Validate V2.1 JavaScript
+        run: node --check v2.1-ios-multipicker.js
+      - name: Attach iPhone multi-picker and refresh cache
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          tag='<script src="v2.1-ios-multipicker.js"></script>'
+          if tag not in s:
+              s=s.replace('</body>',tag+'\n</body>')
+          p.write_text(s)
+
+          p=Path('sw.js')
+          s=p.read_text()
+          s=s.replace("hamodybr-tools-v2","hamodybr-tools-v2-1")
+          old="'./v2.css','./v2.js'"
+          new="'./v2.css','./v2.js','./v2.1-ios-multipicker.js'"
+          if old in s and 'v2.1-ios-multipicker.js' not in s:
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+      - name: Commit V2.1 activation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          if git diff --cached --quiet; then
+            echo "V2.1 already active"
+          else
+            git commit -m "fix: activate reliable iPhone multi-photo picker"
+            git push
+          fi
