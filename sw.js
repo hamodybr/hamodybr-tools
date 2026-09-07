@@ -1,4 +1,4 @@
-const CACHE='hamodybr-tools-v2-2';
+const CACHE='hamodybr-tools-v2-4';
 const FALLBACK='./index.html';
 const CORE=['./index.html','./manifest.webmanifest','./icon.svg','./v2.css','./v2.js','./v2.1-ios-multipicker.js'];
 
