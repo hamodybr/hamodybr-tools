@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2.4-links.js'
       - 'v2.4-links.css'
+      - '.github/workflows/activate-v24.yml'
 
 permissions:
   contents: write
