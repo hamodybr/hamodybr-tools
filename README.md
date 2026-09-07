@@ -2,17 +2,31 @@
 
 Fast, free and privacy-first everyday browser tools.
 
-## MVP v1
+## Current release: V2.5
+
+### Images
 - Compress Image
 - Resize Image
 - Convert JPG / PNG / WebP
 - Image to PDF
+- Batch Compress Images
+- Batch Resize Images
+- Remove Image Metadata
+
+### PDF
 - Merge PDF
 - Split / Extract PDF Pages
+- Organize PDF — reorder and rotate pages
+
+### Text & Utilities
 - QR Code Generator
 - Password Generator
 - Word & Character Counter
 - Text Cleaner
+- JSON Formatter
+- Case Converter
+- URL Encoder / Decoder
+- Color Converter
 
 ## Principles
 - Mobile-first
@@ -21,5 +35,4 @@ Fast, free and privacy-first everyday browser tools.
 - Lightweight static deployment
 - PWA-ready
 
-## Deployment
-This repository is designed for GitHub Pages. The production domain will later be `hamodybr.com` after the GitHub Pages build is verified.
+Social-media downloading is intentionally postponed while the core utility suite is expanded.
