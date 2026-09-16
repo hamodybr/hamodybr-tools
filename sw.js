@@ -1,4 +1,4 @@
-const CACHE='hamodybr-tools-v2-5-1';
+const CACHE='hamodybr-tools-v2-5-2';
 const FALLBACK='./index.html';
 const CORE=[
   './','./index.html','./manifest.webmanifest','./icon.svg',
@@ -11,7 +11,7 @@ self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const req=event.request,url=new URL(req.url);
-  const isLab=/\/tiktok-(?:studio|studio-v2|60fps-prep)\//.test(url.pathname);
+  const isLab=/\/tiktok-(?:studio|studio-v2|studio-v3|60fps-prep)\//.test(url.pathname);
   if(isLab){event.respondWith(fetch(req,{cache:'no-store'}));return;}
   if(req.mode==='navigate'){
     event.respondWith(fetch(req,{cache:'no-store'}).then(r=>{
