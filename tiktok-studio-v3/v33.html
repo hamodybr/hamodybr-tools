@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#6558f5">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<title>TikTok Studio V3.3 — HAMODYBR Tools Lab</title>
+<link rel="stylesheet" href="./v33.css?v=33">
+</head>
+<body>
+<header class="shell top"><div class="brand">HAMODYBR<small>STUDIO LAB</small></div><span class="lab">V3.3 FRAME GUARD</span></header>
+<main class="shell">
+<section class="hero"><h1>TikTok <span>Studio V3.3</span></h1><p>Exact 30→60 frame doubling, smart bitrate, Fast Start MP4, Original-120 timing signature, and built-in before/after inspection.</p></section>
+<section class="card">
+<div class="note ok"><b>V3.3 frame guard:</b> 30 FPS sources are duplicated sample-by-sample onto an exact 60 FPS timeline. A 192-frame source targets exactly 384 output frames.</div>
+<div class="note warn"><b>Important:</b> 30→60 is exact frame doubling, not AI interpolation. Motion information remains 30 unique frames per second while delivery cadence becomes 60 FPS.</div>
+<div class="note" id="cap">Checking Safari hardware H.264 support and MediaInfo engine…</div>
+<label class="picker"><strong>Choose 30 or 60 FPS original video</strong><span>MP4 / MOV • analyzed locally • full MediaInfo report appears below</span><input id="file" type="file" accept="video/*,.mp4,.mov,.m4v"></label>
+<div class="grid">
+<div class="field"><label>Frame mode</label><select id="frameMode"><option value="auto">Auto detect • 30→60 or 60→60</option><option value="60">60 FPS source • preserve motion</option><option value="30">30 FPS source • exact double to 60</option></select></div>
+<div class="field"><label>Encoder bitrate request</label><select id="bitrate"><option value="smart">Smart • 30 Mb/s duplicated / 60 Mb/s native</option><option value="30">30 Mb/s</option><option value="40">40 Mb/s</option><option value="60">60 Mb/s</option><option value="72">72 Mb/s • maximum</option></select></div>
+<div class="field"><label>Output fit</label><select id="fit"><option value="contain">Contain • no crop</option><option value="cover">Cover • fill frame</option></select></div>
+</div>
+<div class="preset"><div><b>Output presentation</b><span>60.000 FPS CFR target</span></div><div><b>Original FPS signature</b><span>120.000 • SPS/VUI</span></div><div><b>Frame guard</b><span>30→60 = exact N×2</span></div><div><b>Color signaling</b><span>BT.709 • Limited</span></div><div><b>MP4 layout</b><span>Fast Start • streamable</span></div><div><b>Built-in inspector</b><span>MediaInfo Full • before + after</span></div></div>
+<div class="meta" id="meta" hidden><div class="stat"><b id="name">—</b><span>File</span></div><div class="stat"><b id="fps">—</b><span>Detected actual FPS</span></div><div class="stat"><b id="frames">—</b><span>Source frames</span></div><div class="stat"><b id="size">—</b><span>Source display size</span></div><div class="stat"><b id="duration">—</b><span>Video duration</span></div></div>
+<div class="note" id="analysis" hidden></div>
+<div class="actions"><button class="btn" id="run" disabled>Build V3.3 file</button><button class="btn danger" id="stop" disabled>Stop</button><button class="btn secondary" id="reset">Reset</button></div>
+<div class="progress"><i id="bar"></i></div><div class="status" id="status">Waiting for engine checks…</div>
+<div class="result" id="result"><strong>V3.3 file ready ✓</strong><p id="resultText"></p><div class="diag" id="diag"></div><div class="actions"><button class="btn" id="share" hidden>Share / Save Video</button><button class="btn secondary" id="download">Download MP4</button></div></div>
+</section>
+<section class="card" id="inspector">
+<div class="note"><b>Built-in Video Inspector:</b> MediaInfo Full runs locally. V3.3 also performs an exact packet-count verification after export.</div>
+<div class="reports">
+<div class="report"><div class="reportHead"><b>BEFORE • Original</b><button class="btn secondary" id="copyBefore" disabled>Copy</button></div><pre id="beforeReport">Choose a video to generate the full report.</pre></div>
+<div class="report"><div class="reportHead"><b>AFTER • HAMODYBR output</b><button class="btn secondary" id="copyAfter" disabled>Copy</button></div><pre id="afterReport">The output report will appear automatically when processing finishes.</pre></div>
+</div>
+<div class="copybar"><button class="btn secondary" id="copyBoth" disabled>Copy Before + After</button></div>
+<p class="tiny">Nothing is uploaded. Large files may take longer because source and output frame counts are verified locally.</p>
+</section>
+</main>
+<footer class="shell foot">HAMODYBR Tools • Studio V3.3 • Exact 30→60 frame guard</footer>
+<script src="https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.7/dist/umd/index.min.js"></script>
+<script type="module" src="./v33.js?v=33"></script>
+</body>
+</html>
