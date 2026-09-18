@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#6558f5">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<title>TikTok Studio V3.4 — HAMODYBR Tools Lab</title>
+<link rel="stylesheet" href="./v33.css?v=34">
+</head>
+<body>
+<header class="shell top"><div class="brand">HAMODYBR<small>STUDIO LAB</small></div><span class="lab">V3.4 LOSSLESS TIMING</span></header>
+<main class="shell">
+<section class="hero"><h1>TikTok <span>Studio V3.4</span></h1><p>Lossless packet-copy retiming for owned or authorized media. No decode, no resize, no video or audio re-encode.</p></section>
+<section class="card">
+<div class="note ok"><b>Lossless Timing Mode:</b> keeps the original encoded HEVC/AVC and AAC packet payloads unchanged, while multiplying packet timestamps and durations by 2. A ~60 FPS source becomes ~30 FPS timing with roughly 2× duration.</div>
+<div class="note warn"><b>Purpose:</b> quality-preserving remux/retime and compatibility testing for media you own or are authorized to use. This tool is not designed to bypass platform originality or moderation systems.</div>
+<label class="picker"><strong>Choose ~60 FPS original video</strong><span>MP4 / MOV • HEVC or AVC • AAC audio supported • processed entirely on-device</span><input id="file" type="file" accept="video/*,.mp4,.mov,.m4v"></label>
+<div class="preset"><div><b>Video payload</b><span>Packet copy • unchanged</span></div><div><b>Audio payload</b><span>Packet copy • unchanged</span></div><div><b>Timing</b><span>×2 timestamps + durations</span></div><div><b>FPS target</b><span>~60 → ~30</span></div><div><b>Duration target</b><span>~2× source</span></div><div><b>Lossless Guard</b><span>bytes + hash + frame count</span></div></div>
+<div class="meta" id="meta" hidden><div class="stat"><b id="name">—</b><span>File</span></div><div class="stat"><b id="codec">—</b><span>Video codec</span></div><div class="stat"><b id="fps">—</b><span>Source FPS</span></div><div class="stat"><b id="frames">—</b><span>Video frames</span></div><div class="stat"><b id="duration">—</b><span>Video duration</span></div></div>
+<div class="note" id="analysis" hidden></div>
+<div class="actions"><button class="btn" id="run" disabled>Build V3.4 lossless file</button><button class="btn secondary" id="reset">Reset</button></div>
+<div class="progress"><i id="bar"></i></div><div class="status" id="status">Choose a ~60 FPS MP4/MOV source.</div>
+<div class="result" id="result"><strong>V3.4 lossless file ready ✓</strong><p id="resultText"></p><div class="diag" id="diag"></div><div class="actions"><button class="btn" id="share" hidden>Share / Save Video</button><button class="btn secondary" id="download">Download MP4</button></div></div>
+</section>
+<section class="card" id="inspector">
+<div class="note"><b>Built-in Video Inspector:</b> MediaInfo Full runs locally. V3.4 verifies packet count, payload byte total, and a rolling payload hash before declaring the remux lossless.</div>
+<div class="reports">
+<div class="report"><div class="reportHead"><b>BEFORE • Original</b><button class="btn secondary" id="copyBefore" disabled>Copy</button></div><pre id="beforeReport">Choose a video to generate the full report.</pre></div>
+<div class="report"><div class="reportHead"><b>AFTER • Lossless retime</b><button class="btn secondary" id="copyAfter" disabled>Copy</button></div><pre id="afterReport">The output report will appear after remux.</pre></div>
+</div>
+<div class="copybar"><button class="btn secondary" id="copyBoth" disabled>Copy Before + After</button></div>
+<p class="tiny">Expected behavior for a 60 FPS source: same codec, same encoded packet payload, same frame count and resolution, approximately half the reported FPS, and approximately double the duration.</p>
+</section>
+</main>
+<footer class="shell foot">HAMODYBR Tools • Studio V3.4 • Lossless Timing Lab</footer>
+<script src="https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.7/dist/umd/index.min.js"></script>
+<script type="module" src="./v34.js?v=34"></script>
+</body>
+</html>
