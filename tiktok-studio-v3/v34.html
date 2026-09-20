@@ -42,13 +42,13 @@
 <div class="note" id="analysis" hidden></div>
 <div class="actions"><button class="btn" id="run" disabled>Build V3.4 lossless file</button><button class="btn danger" id="stop" disabled hidden>Stop</button><button class="btn secondary" id="reset">Reset</button></div>
 <div class="progress"><i id="bar"></i></div><div class="status" id="status">Choose an MP4/MOV source.</div>
-<div class="result" id="result"><strong>V3.4 lossless file ready ✓</strong><p id="resultText"></p><div class="diag" id="diag"></div><div class="actions"><button class="btn" id="share" hidden>Share / Save Video</button><button class="btn secondary" id="download">Download MP4</button></div></div>
+<div class="result" id="result"><strong>V3.4 output ready ✓</strong><p id="resultText"></p><div class="diag" id="diag"></div><div class="actions"><button class="btn" id="share" hidden>Share / Save Video</button><button class="btn secondary" id="download">Download MP4</button></div></div>
 </section>
 <section class="card" id="inspector">
 <div class="note"><b>Built-in Video Inspector:</b> MediaInfo Full runs locally. Lossless modes verify packet count, payload byte total, and a rolling payload hash before declaring the remux lossless. Quality Lab reports every enabled adjustment.</div>
 <div class="reports">
 <div class="report"><div class="reportHead"><b>BEFORE • Original</b><button class="btn secondary" id="copyBefore" disabled>Copy</button></div><pre id="beforeReport">Choose a video to generate the full report.</pre></div>
-<div class="report"><div class="reportHead"><b>AFTER • Lossless retime</b><button class="btn secondary" id="copyAfter" disabled>Copy</button></div><pre id="afterReport">The output report will appear after remux.</pre></div>
+<div class="report"><div class="reportHead"><b>AFTER • Output</b><button class="btn secondary" id="copyAfter" disabled>Copy</button></div><pre id="afterReport">The output report will appear after processing.</pre></div>
 </div>
 <div class="copybar"><button class="btn secondary" id="copyBoth" disabled>Copy Before + After</button></div>
 <p class="tiny">Lossless Timing expected behavior: same codec, encoded packet payload, frame count, resolution and color signaling; approximately half the reported FPS and double the duration. Quality Lab is optional and always re-encodes.</p>
