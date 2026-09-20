@@ -7,35 +7,55 @@
 <meta name="robots" content="noindex,nofollow">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <title>TikTok Studio V3.4 — HAMODYBR Tools Lab</title>
-<link rel="stylesheet" href="./v33.css?v=34">
+<link rel="stylesheet" href="./v33.css?v=341">
 </head>
 <body>
 <header class="shell top"><div class="brand">HAMODYBR<small>STUDIO LAB</small></div><span class="lab">V3.4 LOSSLESS TIMING</span></header>
 <main class="shell">
-<section class="hero"><h1>TikTok <span>Studio V3.4</span></h1><p>Lossless packet-copy retiming for owned or authorized media. No decode, no resize, no video or audio re-encode.</p></section>
+<section class="hero"><h1>TikTok <span>Studio V3.4</span></h1><p>Lossless Timing stays recommended by default. Optional compatibility and quality tools are available when you explicitly enable them.</p></section>
 <section class="card">
 <div class="note ok"><b>Lossless Timing Mode:</b> keeps the original encoded HEVC/AVC and AAC packet payloads unchanged, while multiplying packet timestamps and durations by 2. A ~60 FPS source becomes ~30 FPS timing with roughly 2× duration.</div>
 <div class="note warn"><b>Purpose:</b> quality-preserving remux/retime and compatibility testing for media you own or are authorized to use. This tool is not designed to bypass platform originality or moderation systems.</div>
-<label class="picker"><strong>Choose ~60 FPS original video</strong><span>MP4 / MOV • HEVC or AVC • AAC audio supported • processed entirely on-device</span><input id="file" type="file" accept="video/*,.mp4,.mov,.m4v"></label>
+<div class="note" id="cap">Checking the local inspection and optional hardware-encoding engines…</div>
+<label class="picker"><strong>Choose original video</strong><span>MP4 / MOV • analyzed and processed entirely on-device</span><input id="file" type="file" accept="video/*,.mp4,.mov,.m4v"></label>
+<div class="modeGrid">
+<label class="modeCard active"><input type="radio" name="mode" value="losslessTiming" checked><span><b>Lossless Timing</b><small>Recommended • current V3.4 behavior • zero re-encode</small></span></label>
+<label class="modeCard"><input type="radio" name="mode" value="losslessRemux"><span><b>Lossless Remux</b><small>Keep original FPS and duration • rebuild MP4 only</small></span></label>
+<label class="modeCard"><input type="radio" name="mode" value="qualityLab"><span><b>Quality Lab</b><small>Optional re-encode • every adjustment starts OFF</small></span></label>
+</div>
+<div class="advanced" id="qualityPanel" hidden>
+<div class="advancedHead"><div><b>Quality Lab • Experimental</b><span>Enabling this mode re-encodes video. It is separate from Lossless Timing.</span></div><span class="risk">RE-ENCODE</span></div>
+<div class="grid">
+<div class="field"><label>Output size</label><select id="outputSize"><option value="original">Original size</option><option value="1080">1080 × 1920 / 1920 × 1080</option></select></div>
+<div class="field"><label>Frame rate</label><select id="outputFps"><option value="original">Preserve source FPS</option><option value="60">60 FPS</option><option value="30">30 FPS</option></select></div>
+<div class="field"><label>Video bitrate</label><select id="bitrate"><option value="20">20 Mb/s • recommended test</option><option value="16">16 Mb/s</option><option value="30">30 Mb/s</option><option value="40">40 Mb/s</option><option value="60">60 Mb/s</option></select></div>
+<div class="field"><label>Fit</label><select id="fit"><option value="contain">Contain • no crop</option><option value="cover">Cover • fill frame</option></select></div>
+<div class="field"><label>Brightness</label><select id="brightness"><option value="1">Off</option><option value="1.02">+2%</option><option value="1.05">+5%</option></select></div>
+<div class="field"><label>Contrast</label><select id="contrast"><option value="1">Off</option><option value="1.02">+2%</option><option value="1.05">+5%</option></select></div>
+<div class="field"><label>Saturation</label><select id="saturation"><option value="1">Off</option><option value="1.03">+3%</option><option value="1.05">+5%</option></select></div>
+<div class="field"><label>Noise smoothing</label><select id="smoothing"><option value="0">Off</option><option value="0.2">Very light • 0.2px</option><option value="0.35">Light • 0.35px</option></select></div>
+</div>
+<div class="note warn optionWarning" id="qualityWarning"><b>All adjustments are OFF by default.</b> HDR is preserved only in lossless modes; SDR→HDR conversion is intentionally not faked by metadata.</div>
+</div>
 <div class="preset"><div><b>Video payload</b><span>Packet copy • unchanged</span></div><div><b>Audio payload</b><span>Packet copy • unchanged</span></div><div><b>Timing</b><span>×2 timestamps + durations</span></div><div><b>FPS target</b><span>~60 → ~30</span></div><div><b>Duration target</b><span>~2× source</span></div><div><b>Lossless Guard</b><span>bytes + hash + frame count</span></div></div>
-<div class="meta" id="meta" hidden><div class="stat"><b id="name">—</b><span>File</span></div><div class="stat"><b id="codec">—</b><span>Video codec</span></div><div class="stat"><b id="fps">—</b><span>Source FPS</span></div><div class="stat"><b id="frames">—</b><span>Video frames</span></div><div class="stat"><b id="duration">—</b><span>Video duration</span></div></div>
+<div class="meta" id="meta" hidden><div class="stat"><b id="name">—</b><span>File</span></div><div class="stat"><b id="codec">—</b><span>Video codec</span></div><div class="stat"><b id="fps">—</b><span>Source FPS</span></div><div class="stat"><b id="frames">—</b><span>Video frames</span></div><div class="stat"><b id="size">—</b><span>Display size</span></div><div class="stat"><b id="color">—</b><span>Color / HDR</span></div><div class="stat"><b id="duration">—</b><span>Video duration</span></div></div>
 <div class="note" id="analysis" hidden></div>
-<div class="actions"><button class="btn" id="run" disabled>Build V3.4 lossless file</button><button class="btn secondary" id="reset">Reset</button></div>
-<div class="progress"><i id="bar"></i></div><div class="status" id="status">Choose a ~60 FPS MP4/MOV source.</div>
-<div class="result" id="result"><strong>V3.4 lossless file ready ✓</strong><p id="resultText"></p><div class="diag" id="diag"></div><div class="actions"><button class="btn" id="share" hidden>Share / Save Video</button><button class="btn secondary" id="download">Download MP4</button></div></div>
+<div class="actions"><button class="btn" id="run" disabled>Build V3.4 lossless file</button><button class="btn danger" id="stop" disabled hidden>Stop</button><button class="btn secondary" id="reset">Reset</button></div>
+<div class="progress"><i id="bar"></i></div><div class="status" id="status">Choose an MP4/MOV source.</div>
+<div class="result" id="result"><strong>V3.4 output ready ✓</strong><p id="resultText"></p><div class="diag" id="diag"></div><div class="actions"><button class="btn" id="share" hidden>Share / Save Video</button><button class="btn secondary" id="download">Download MP4</button></div></div>
 </section>
 <section class="card" id="inspector">
-<div class="note"><b>Built-in Video Inspector:</b> MediaInfo Full runs locally. V3.4 verifies packet count, payload byte total, and a rolling payload hash before declaring the remux lossless.</div>
+<div class="note"><b>Built-in Video Inspector:</b> MediaInfo Full runs locally. Lossless modes verify packet count, payload byte total, and a rolling payload hash before declaring the remux lossless. Quality Lab reports every enabled adjustment.</div>
 <div class="reports">
 <div class="report"><div class="reportHead"><b>BEFORE • Original</b><button class="btn secondary" id="copyBefore" disabled>Copy</button></div><pre id="beforeReport">Choose a video to generate the full report.</pre></div>
-<div class="report"><div class="reportHead"><b>AFTER • Lossless retime</b><button class="btn secondary" id="copyAfter" disabled>Copy</button></div><pre id="afterReport">The output report will appear after remux.</pre></div>
+<div class="report"><div class="reportHead"><b>AFTER • Output</b><button class="btn secondary" id="copyAfter" disabled>Copy</button></div><pre id="afterReport">The output report will appear after processing.</pre></div>
 </div>
 <div class="copybar"><button class="btn secondary" id="copyBoth" disabled>Copy Before + After</button></div>
-<p class="tiny">Expected behavior for a 60 FPS source: same codec, same encoded packet payload, same frame count and resolution, approximately half the reported FPS, and approximately double the duration.</p>
+<p class="tiny">Lossless Timing expected behavior: same codec, encoded packet payload, frame count, resolution and color signaling; approximately half the reported FPS and double the duration. Quality Lab is optional and always re-encodes.</p>
 </section>
 </main>
 <footer class="shell foot">HAMODYBR Tools • Studio V3.4 • Lossless Timing Lab</footer>
 <script src="https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.7/dist/umd/index.min.js"></script>
-<script type="module" src="./v34.js?v=34"></script>
+<script type="module" src="./v34.js?v=341"></script>
 </body>
 </html>
