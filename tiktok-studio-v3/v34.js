@@ -875,6 +875,10 @@ Rotation metadata: ${rotation}° → ${out.rotation}°
 HDR signaling: ${sourceIsHdr() ? (hdrOk ? "preserved ✓" : "failed") : "SDR"}
 Resize / crop / visual filters: NO
 Re-encode: YES`;
+  if (reduction <= 0)
+    throw new Error(
+      "The encoded result was not smaller. Choose Balanced or Smaller and try again.",
+    );
   await saveReady(
     blob,
     name,
