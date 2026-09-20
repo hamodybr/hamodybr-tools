@@ -12,7 +12,7 @@
       http-equiv="Cache-Control"
       content="no-store, no-cache, must-revalidate, max-age=0"
     />
-    <title>TikTok Studio V3.4 — HAMODYBR Tools Lab</title>
+    <title>TikTok Studio V3.4 — Quality-first diagnostic</title>
     <link rel="stylesheet" href="./v33.css?v=342" />
   </head>
   <body>
@@ -24,16 +24,16 @@
       <section class="hero">
         <h1>TikTok <span>Studio V3.4</span></h1>
         <p>
-          Lossless Timing stays recommended by default. Optional compatibility
-          and quality tools are available when you explicitly enable them.
+          Start by comparing the original video with an unchanged-payload remux.
+          Compression is optional and may reduce visible detail before TikTok processes your upload.
         </p>
       </section>
       <section class="card">
         <div class="note ok">
-          <b>Lossless Timing Mode:</b> keeps the original encoded HEVC/AVC and
+          <b>Lossless Timing Mode (special-purpose):</b> keeps the original encoded HEVC/AVC and
           AAC packet payloads unchanged, while multiplying packet timestamps and
           durations by 2. A ~60 FPS source becomes ~30 FPS timing with roughly
-          2× duration.
+          2× duration. Do not choose this mode for normal-speed TikTok uploads.
         </div>
         <div class="note warn">
           <b>Purpose:</b> quality-preserving remux/retime and compatibility
@@ -51,24 +51,23 @@
           ><input id="file" type="file" accept="video/*,.mp4,.mov,.m4v"
         /></label>
         <div class="modeGrid">
-          <label class="modeCard active"
+          <label class="modeCard"
             ><input
               type="radio"
               name="mode"
               value="losslessTiming"
-              checked
             /><span
               ><b>Lossless Timing</b
               ><small
-                >Recommended • current V3.4 behavior • zero re-encode</small
+                >Special-purpose retiming • doubles duration • zero re-encode</small
               ></span
             ></label
           >
-          <label class="modeCard"
-            ><input type="radio" name="mode" value="losslessRemux" /><span
+          <label class="modeCard active"
+            ><input type="radio" name="mode" value="losslessRemux" checked /><span
               ><b>Lossless Remux</b
               ><small
-                >Keep original FPS and duration • rebuild MP4 only</small
+                >Quality-first baseline • keep original FPS and duration</small
               ></span
             ></label
           >
@@ -89,6 +88,12 @@
               ></span
             ></label
           >
+        </div>
+        <div class="note ok">
+          <b>Upload quality test:</b> first upload the original video directly from Photos,
+          then compare it with Lossless Remux and, only if file size is a problem, Smart Compress.
+          Use the same short source clip and TikTok upload settings for each test.
+          No local mode can guarantee that TikTok will preserve upload quality.
         </div>
         <div class="advanced compressPanel" id="compressPanel" hidden>
           <div class="advancedHead">
@@ -125,9 +130,9 @@
             </div>
           </div>
           <div class="note warn optionWarning" id="compressWarning">
-            <b>Gentle is selected by default.</b> Encoded bytes must change to
-            reduce size, so mathematically lossless compression is not possible.
-            No resize, crop, FPS change or visual filter is applied.
+            <b>Gentle is selected by default.</b> Re-encoding may visibly degrade fine detail even when
+            resolution, FPS and duration stay the same. The target bitrate is an estimate,
+            not a quality guarantee. Compare the output locally with the original before uploading.
           </div>
         </div>
         <div class="advanced" id="qualityPanel" hidden>
@@ -261,7 +266,8 @@
       </section>
       <section class="card" id="inspector">
         <div class="note">
-          <b>Built-in Video Inspector:</b> MediaInfo Full runs locally. Lossless
+          <b>Built-in Video Inspector:</b> MediaInfo Full runs locally. A matching resolution
+          or HDR flag alone does not prove equal visual quality. Lossless
           modes verify packet count, payload byte total, and a rolling payload
           hash before declaring the remux lossless. Quality Lab reports every
           enabled adjustment.
