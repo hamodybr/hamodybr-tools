@@ -164,7 +164,7 @@ async function valid60() {
   const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target });
   const conversion = await Conversion.init({
     input, output, tracks: "primary",
-    video: { codec: src.bCodec, width: src.w, height: src.h, frameRate: 60,
+    video: { codec: src.bCodec, width: src.w, height: src.h, frameRate: 60, fit: "contain",
       quality: q, keyFrameInterval: 1, hardwareAcceleration: "prefer-hardware", forceTranscode: true },
     copy: { mode: "preferred" }, showWarnings: false
   });
