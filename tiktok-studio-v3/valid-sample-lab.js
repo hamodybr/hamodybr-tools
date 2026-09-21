@@ -53,7 +53,7 @@ async function metrics(v) {
 }
 async function analyze(file) {
   const localToken = ++token;
-  src = null; resultEl.hidden = true; resultBlob = null;
+  src = null; resultEl.hidden = true; resultEl.classList.remove("show"); resultBlob = null;
   sourceEl.textContent = "Reading local file…";
   status("Opening source locally…", 5);
   runBtn.disabled = true;
@@ -217,7 +217,7 @@ async function verify(blob, selected, targetMbps) {
 }
 function ready(blob, name, report) {
   resultBlob = blob; resultName = name;
-  detailsEl.textContent = report; resultEl.hidden = false;
+  detailsEl.textContent = report; resultEl.hidden = false; resultEl.classList.add("show");
   const file = new File([blob], name, { type: "video/mp4" });
   shareBtn.hidden = !(navigator.share && navigator.canShare?.({ files: [file] }));
   shareBtn.onclick = async () => { try { await navigator.share({ files: [file], title: "HAMODYBR Valid-Sample Lab" }); } catch {} };
@@ -230,7 +230,7 @@ function ready(blob, name, report) {
 }
 runBtn.addEventListener("click", async () => {
   if (!src || current) return;
-  current = true; showState(); resultEl.hidden = true;
+  current = true; fileEl.disabled = true; resetBtn.disabled = true; showState(); resultEl.hidden = true; resultEl.classList.remove("show");
   const selected = mode();
   try {
     const built = selected === "B" ? await valid60() : { blob: await remux(selected), targetMbps: null };
@@ -239,12 +239,12 @@ runBtn.addEventListener("click", async () => {
     ready(built.blob, base + "-hamodybr-valid-" + selected + ".mp4", report);
   } catch (e) {
     status("Experiment failed: " + err(e), 0);
-  } finally { current = false; showState(); }
+  } finally { current = false; fileEl.disabled = false; resetBtn.disabled = false; showState(); }
 });
 resetBtn.addEventListener("click", () => {
   if (current) return;
   ++token; fileEl.value = ""; inputFile = input = sourceVideo = sourceAudio = src = null;
-  resultEl.hidden = true; resultBlob = null;
+  resultEl.hidden = true; resultEl.classList.remove("show"); resultBlob = null;
   if (outputUrl) URL.revokeObjectURL(outputUrl);
   outputUrl = null; sourceEl.textContent = "Choose a video to read its metadata.";
   status("Waiting for a video.", 0); showState();
