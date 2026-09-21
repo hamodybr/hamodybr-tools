@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#6558f5"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>HAMODYBR Density Engine — Experimental</title>
+<link rel="stylesheet" href="./v33.css?v=344"/>
+<style>
+.labWrap{max-width:900px;margin:auto;padding:20px 14px 60px}
+.modeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.modeBox{border:1px solid #777;border-radius:12px;padding:14px;display:block}
+.modeBox:has(input:checked){border:2px solid #e9bb48}
+.modeBox strong,.modeBox small{display:block;margin:7px 0}
+.modeBox small{font-size:12px;color:#aaa;line-height:1.5}
+#labProgress{width:100%;margin-top:12px}
+#labDetails{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+#labSource{white-space:pre-wrap}
+.labWrap a{color:var(--accent)}
+@media(max-width:640px){.modeGrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="shell top">
+<div class="brand">HAMODYBR<small>INDEPENDENT EXPERIMENT</small></div>
+<span class="lab">DENSITY BETA</span>
+</header>
+<main class="labWrap">
+<section class="hero">
+<h1>HAMODYBR <span>Density Engine</span></h1>
+<p>An independently implemented MP4 sample-density experiment inspired by publicly described concepts, without copying NoBlur source files.</p>
+<p><a href="./v34.html">← Back to TikTok Studio</a></p>
+</section>
+<section class="card">
+<div class="note warn"><b>Experimental, not a Public fix.</b> This tool intentionally inserts filler-only pseudo-samples into MP4 tables. They are not real video frames. The file can cause decoding errors or stay Private / under review on TikTok, just like the NoBlur experiment. A high-quality Private preview is not proof of public-playback quality. Do not repeatedly upload a file that remains under review.</div>
+<label class="picker"><strong>Select original MP4 / MOV</strong><span>Processed locally in your browser. Keep the original.</span>
+<input id="densityFile" type="file" accept="video/*,.mp4,.mov,.m4v"/>
+</label>
+<div id="densitySource" class="note">Choose a video to inspect its source.</div>
+<div class="modeGrid">
+<label class="modeBox">
+<input name="densityMode" type="radio" value="10" checked/>
+<strong>NB-Reference · Density ×10</strong>
+<small>Independent 10× sample-table experiment for technical comparison. Highest risk of Private / decode errors. No quality guarantee.</small>
+</label>
+<label class="modeBox">
+<input name="densityMode" type="radio" value="2"/>
+<strong>NB-Lite · Density ×2</strong>
+<small>Lower experimental sample count, still uses filler-only samples and can fail. Not a verified safe fix.</small>
+</label>
+</div>
+<label class="modeBox"><input id="densityConfirm" type="checkbox"/> I understand this is an intentionally non-standard MP4, not suitable for important posts or assured Public playback.</label>
+<div class="actions"><button class="btn" id="densityRun" disabled>Build experimental patch</button>
+<button class="btn secondary" id="densityReset">Reset</button></div>
+<progress id="densityProgress" value="0" max="100"></progress>
+<div id="densityStatus" class="status" role="status" aria-live="polite">Waiting for a video.</div>
+<div id="densityResult" class="result" hidden>
+<strong>Experimental patch created — not yet verified by TikTok</strong>
+<pre id="densityDetails" class="diag"></pre>
+<div class="actions">
+<button class="btn" id="densityShare" hidden>Share / Save</button>
+<button class="btn secondary" id="densityDownload">Download MP4</button>
+</div>
+</div>
+</section>
+<section class="card">
+<div class="note"><b>Validation:</b> the program verifies sample-table count and exact preservation of original compressed video packets. This does not establish that synthetic samples decode, that Public posting works, or that TikTok reduces recompression. A standards-compliant alternative cannot be claimed to reproduce the same effect without independent public-playback evidence.</div>
+<p class="tiny">Maximum initial source size: 180 MiB. Large videos can exhaust Safari memory. First use a short sample and compare against the original from another account/device only after a completed Public post.</p>
+</section>
+</main>
+<footer class="shell foot">HAMODYBR Density Engine • independent experimental build</footer>
+<script type="module" src="./density-lab.js?v=1"></script>
+</body>
+</html>
