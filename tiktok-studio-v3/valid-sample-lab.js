@@ -153,7 +153,8 @@ async function valid60() {
   if (!src.bEncoder || src.w % 2 || src.h % 2)
     throw new Error("Encoder unavailable or dimensions are odd.");
   const targetMbps = Math.min(60, Math.max(20, (inputFile.size * 8 / src.duration / 1e6) * 1.25));
-  const q = new Quality({ bitrate: targetMbps * 1e6, bitrateMode: "constant" });
+  const bitrateBps = Math.max(1, Math.round(targetMbps * 1e6));
+  const q = new Quality({ bitrate: bitrateBps, bitrateMode: "constant" });
   const supported = await canEncodeVideo(src.bCodec, {
     width: src.w, height: src.h, quality: q, hardwareAcceleration: "prefer-hardware"
   });
