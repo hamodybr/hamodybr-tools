@@ -10,14 +10,17 @@ const A = (s) => Uint8Array.from([...s].map((c) => c.charCodeAt(0)));
 const C = (...parts) => { const b = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let at = 0; for (const p of parts) { b.set(p, at); at += p.length; } return b; };
 const B = (t, p) => C(U(p.length + 8), A(t), p);
 const F = (t, rows) => B(t, C(new Uint8Array(4), U(rows.length), ...rows.map((r) => C(...r.map(U)))));
-function fixture() {
+function fixture(frameDelta = 1000, version = 0) {
   const ftyp = B('ftyp', C(A('isom'), U(0), A('isom')));
   const stsd = B('stsd', C(new Uint8Array(4), U(1), U(16), A('avc1'), new Uint8Array(8)));
-  const video = (offsets) => B('stbl', C(stsd, F('stts', [[2, 1000]]),
+  const video = (offsets) => B('stbl', C(stsd, F('stts', [[2, frameDelta]]),
     B('stsz', C(new Uint8Array(4), U(0), U(2), U(4), U(4))),
     F('stsc', [[1, 1, 1]]), F('stco', offsets.map((n) => [n]))));
+  const mdhd = version === 0
+    ? B('mdhd', C(new Uint8Array(4), U(0), U(0), U(30), U(2 * frameDelta), new Uint8Array(4)))
+    : B('mdhd', C(U(0x01000000), U(0), U(0), U(0), U(0), U(30), U(0), U(2 * frameDelta), new Uint8Array(4)));
   const moov = (offsets) => B('moov', B('trak', B('mdia', C(
-    B('hdlr', C(new Uint8Array(8), A('vide'), new Uint8Array(4))),
+    mdhd, B('hdlr', C(new Uint8Array(8), A('vide'), new Uint8Array(4))),
     B('minf', video(offsets))))));
   const sample = Uint8Array.from([0, 0, 0, 0, 1, 2, 3, 4]);
   const start = ftyp.length + moov([0, 0]).length + 8;
@@ -44,4 +47,22 @@ test('factor 10 declares 20 samples while preserving source payload', () => {
 test('rejects unsupported sample density and bad input', () => {
   assert.throws(() => buildDensity(fixture(), 3), /Density factor/);
   assert.throws(() => buildDensity(new Uint8Array(16), 10));
+});
+test('scales 30 Hz timebase for 1-tick input at 10x', () => {
+  const result = buildDensity(fixture(1), 10);
+  assert.equal(result.report.timebaseMultiplier, 10);
+  assert.equal(result.report.sourceTimescale, 30);
+  assert.equal(result.report.outputTimescale, 300);
+  assert.equal(result.report.declaredSamples, 20);
+  assert.equal(result.report.realPayloadIdentical, true);
+});
+test('scales 1-tick input minimally at 2x', () => {
+  const result = buildDensity(fixture(1), 2);
+  assert.equal(result.report.timebaseMultiplier, 2);
+  assert.equal(result.report.outputTimescale, 60);
+});
+test('supports mdhd version 1 timebase scaling', () => {
+  const result = buildDensity(fixture(1, 1), 10);
+  assert.equal(result.report.timebaseMultiplier, 10);
+  assert.equal(result.report.outputTimescale, 300);
 });
