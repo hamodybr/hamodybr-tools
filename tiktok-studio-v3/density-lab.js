@@ -2,7 +2,7 @@ import {
   Input, Output, ALL_FORMATS, BlobSource, BufferTarget, Mp4OutputFormat,
   EncodedPacketSink, EncodedVideoPacketSource, EncodedAudioPacketSource
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
-import { inspectNormalizedMp4, buildDensity } from './hamodybr-density.js?v=1';
+import { inspectNormalizedMp4, buildDensity } from './hamodybr-density.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const fileEl = $('densityFile'), sourceEl = $('densitySource'), statusEl = $('densityStatus');
