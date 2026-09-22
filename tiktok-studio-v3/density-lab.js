@@ -1,6 +1,6 @@
 import {
   Input, Output, ALL_FORMATS, BlobSource, BufferTarget, Mp4OutputFormat,
-  EncodedPacketSink, EncodedVideoPacketSource, EncodedAudioPacketSource
+  EncodedPacketSink, EncodedVideoPacketSource, EncodedAudioPacketSource, VideoSampleSink
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
 import { inspectNormalizedMp4, buildTrailingDensity } from './hamodybr-density.js?v=3';
 
@@ -111,6 +111,37 @@ async function normalize() {
     throw new Error('Normalizer packet count differs from original track.');
   return normalized;
 }
+
+/**
+ * Spot-check the ORIGINAL-PICTURE portion with the current device decoder.
+ * This does NOT test all frames or trailing filler. Refuse export on failure.
+ */
+async function decoderSpotCheck(blob, sourceDuration, fps) {
+  const inspect = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
+  const track = await inspect.getPrimaryVideoTrack();
+  if (!track || !(await track.canDecode())) {
+    throw new Error('Decoder Guard: browser cannot decode this experimental video.');
+  }
+  const sink = new VideoSampleSink(track);
+  const last = Math.max(0, sourceDuration - 2 / Math.max(1, fps));
+  const checkpoints = [...new Set([0, sourceDuration * 0.45, last].map((n) => Number(n.toFixed(4))))];
+  let decoded = 0;
+  for (const second of checkpoints) {
+    let frame = null;
+    try {
+      frame = await sink.getSample(second);
+      if (!frame || !frame.displayWidth || !frame.displayHeight)
+        throw new Error('No image at ' + second.toFixed(3) + 's');
+      decoded++;
+    } catch (e) {
+      throw new Error('Decoder Guard failed at ' + second.toFixed(3) + 's: ' + describeError(e));
+    } finally {
+      frame?.close?.();
+    }
+  }
+  return decoded;
+}
+
 function outputReady(blob, name, report) {
   resultBlob = blob; resultName = name;
   detailsEl.textContent = report; resultEl.hidden = false; resultEl.classList.add('show');
@@ -137,6 +168,8 @@ runBtn.addEventListener('click', async () => {
     const built = buildTrailingDensity(normalized, factor);
     updateStatus('Checking real payload identity and sample count…', 88);
     const blob = new Blob([built.bytes], { type: 'video/mp4' });
+    updateStatus('Decoder Guard: sampling first / middle / near-end real pictures…', 92);
+    const decoded = await decoderSpotCheck(blob, metadata.duration, metadata.fps);
     const base = file.name.replace(/\.[^.]+$/, '') || 'video';
     const name = base + '-hamodybr-trailing-' + factor + 'x-DIAGNOSTIC.mp4';
     outputReady(blob, name, [
@@ -147,6 +180,7 @@ runBtn.addEventListener('click', async () => {
       'Declared samples: ' + built.report.declaredSamples,
       'Non-picture filler samples: ' + built.report.pseudoSamples,
       'Real compressed payload: IDENTICAL ✓',
+      'Decoder spot-check: ' + decoded + ' real-picture positions decoded ✓',
       'Original samples first: ' + (built.report.originalPicturesFirst ? 'YES ✓' : 'NO'),
       'Original timescale: ' + built.report.sourceTimescale,
       'Output timescale: ' + built.report.outputTimescale,
@@ -154,11 +188,12 @@ runBtn.addEventListener('click', async () => {
       'Experimental output: ' + formatSize(blob.size),
       'No real new video detail or frames have been created.',
       'Only the original-picture prefix was structurally verified. The added samples are NOT decodable frames.',
-      'Full decoding and TikTok Public playback NOT verified. Do not upload before a separate decoder check.'
+      'ONLY 3 picture positions were decoded; full stream remains NON-DECODABLE at filler tail.',
+      'NOT cleared for TikTok Public upload. Further desktop FFmpeg checks required.'
     ].join('\n'));
-    updateStatus('Structure checked; full decoding NOT verified. Do not upload yet.', 100);
+    updateStatus('Real-picture spot-check passed; full stream NOT valid. Do not upload.', 100);
   } catch (e) {
-    updateStatus('Experiment failed: ' + describeError(e), 0);
+    updateStatus('Experiment rejected: ' + describeError(e), 0);
   } finally {
     current = false; fileEl.disabled = resetBtn.disabled = false; refresh();
   }
