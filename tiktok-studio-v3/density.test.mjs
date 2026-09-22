@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 // Load the standalone browser module in Node without altering the repository package type.
 const source = await readFile(new URL('./hamodybr-density.js', import.meta.url), 'utf8');
-const { inspectNormalizedMp4, buildDensity } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+const { inspectNormalizedMp4, buildDensity, buildTrailingDensity } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 const U = (n) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n); return b; };
 const A = (s) => Uint8Array.from([...s].map((c) => c.charCodeAt(0)));
 const C = (...parts) => { const b = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let at = 0; for (const p of parts) { b.set(p, at); at += p.length; } return b; };
@@ -65,4 +65,20 @@ test('supports mdhd version 1 timebase scaling', () => {
   const result = buildDensity(fixture(1, 1), 10);
   assert.equal(result.report.timebaseMultiplier, 10);
   assert.equal(result.report.outputTimescale, 300);
+});
+
+test('trailing ×2 keeps original pictures first without changing source duration', () => {
+  const out = buildTrailingDensity(fixture(1), 2);
+  assert.equal(out.report.declaredSamples, 4);
+  assert.equal(out.report.originalPicturesFirst, true);
+  assert.equal(out.report.realPayloadIdentical, true);
+  assert.equal(out.report.sourceTimescale, out.report.outputTimescale);
+  assert.equal(out.report.originalDurationTicks, out.report.outputDurationTicks);
+});
+test('trailing ×10 preserves original picture prefix with mdhd v1', () => {
+  const out = buildTrailingDensity(fixture(1, 1), 10);
+  assert.equal(out.report.declaredSamples, 20);
+  assert.equal(out.report.originalPicturesFirst, true);
+  assert.equal(out.report.realPayloadIdentical, true);
+  assert.equal(out.report.originalDurationTicks, out.report.outputDurationTicks);
 });
