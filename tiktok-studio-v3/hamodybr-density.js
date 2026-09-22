@@ -289,3 +289,118 @@ export function buildDensity(input, factor = 10) {
     }
   };
 }
+
+
+/**
+ * Trailing-sample diagnostic: all original compressed pictures remain the FIRST
+ * samples in decode order. The appended samples remain non-picture filler.
+ * This is NOT a compliant stream or a TikTok public-quality workaround.
+ */
+export function buildTrailingDensity(input, factor = 10) {
+  need(factor === 2 || factor === 10, 'Density factor must be 2 or 10');
+  const { bytes, top, video } = inspectNormalizedMp4(input);
+  const media = readMediaTimebase(bytes, video.mdhd);
+  const fillerBytes = filler(video.codec);
+  const extra = video.count * (factor - 1);
+  const sampleCount = video.count + extra;
+  need(sampleCount <= 150000, 'Expanded sample count exceeds safe limit');
+  const fake = new Uint8Array(extra * fillerBytes.length);
+  for (let i = 0; i < fake.length; i += fillerBytes.length) fake.set(fillerBytes, i);
+  const secondMedia = box('mdat', fake);
+  const sourceRows = positions(bytes, video.stts, 8).map((p) => [uint(bytes, p), uint(bytes, p + 4)]);
+  need(sourceRows.reduce((sum, row) => sum + row[0], 0) === video.count,
+    'Source timing table count differs from sample count');
+  const lastDelta = sourceRows[sourceRows.length - 1][1];
+  need(lastDelta > 0, 'Last real frame has no duration');
+  const durations = sourceRows.concat([[extra, lastDelta]]);
+  const sourceCtts = video.ctts ? positions(bytes, video.ctts, 8).map((p) =>
+    [uint(bytes, p), uint(bytes, p + 4)]) : null;
+  if (sourceCtts) need(sourceCtts.reduce((sum, row) => sum + row[0], 0) === video.count,
+    'Source composition table count differs from sample count');
+  const rebuild = (shift, fakeStart) => {
+    const replacements = new Map();
+    const sizes = video.sizes.concat(Array(extra).fill(fillerBytes.length));
+    const stsz = new Uint8Array(12 + sampleCount * 4);
+    stsz.set(bytes.slice(video.stsz.body, video.stsz.body + 4));
+    put(stsz, 4, 0); put(stsz, 8, sampleCount);
+    sizes.forEach((size, i) => put(stsz, 12 + 4 * i, size));
+    replacements.set(video.stsz.start, box('stsz', stsz));
+    replacements.set(video.stts.start, table(bytes, video.stts, 8, durations));
+    replacements.set(video.stsc.start, table(bytes, video.stsc, 12, [[1, 1, 1]]));
+    const offsets = video.offsets.map((n) => n + shift);
+    for (let i = 0; i < extra; i++) offsets.push(fakeStart + i * fillerBytes.length);
+    const stride = video.stco.type === 'co64' ? 8 : 4;
+    const offsetData = new Uint8Array(8 + offsets.length * stride);
+    offsetData.set(bytes.slice(video.stco.body, video.stco.body + 4));
+    put(offsetData, 4, offsets.length);
+    offsets.forEach((offset, i) => {
+      if (stride === 8) put64(offsetData, 8 + i * stride, offset);
+      else put(offsetData, 8 + i * stride, offset);
+    });
+    replacements.set(video.stco.start, box(video.stco.type, offsetData));
+    // Sync samples retain their original sample numbers; filler is appended.
+    if (sourceCtts) replacements.set(video.ctts.start,
+      table(bytes, video.ctts, 8, sourceCtts.concat([[extra, 0]])));
+    const rewrite = (item) => {
+      if (replacements.has(item.start)) return replacements.get(item.start);
+      if (item.type === 'stco' || item.type === 'co64') {
+        const copy = original(bytes, item), step = item.type === 'co64' ? 8 : 4;
+        for (const p of positions(bytes, item, step)) {
+          const next = (step === 8 ? get64(bytes, p) : uint(bytes, p)) + shift;
+          if (step === 8) put64(copy, p - item.start, next);
+          else put(copy, p - item.start, next);
+        }
+        return copy;
+      }
+      if (!['moov', 'trak', 'mdia', 'minf', 'stbl'].includes(item.type))
+        return original(bytes, item);
+      return box(item.type, join(...children(bytes, item).map(rewrite)));
+    };
+    return rewrite(top[1]);
+  };
+  const firstPass = rebuild(0, 0);
+  const shift = firstPass.length - top[1].size;
+  need(shift > 0 && bytes.length + shift + secondMedia.length < 0x100000000,
+    'Expanded file is too large');
+  const trailingStart = bytes.length + shift + 8;
+  const moov = rebuild(shift, trailingStart);
+  need(moov.length === firstPass.length, 'Unstable MP4 relocation');
+  const result = join(bytes.slice(0, top[0].end), moov, bytes.slice(top[2].start), secondMedia);
+  const output = inspectNormalizedMp4WithTrailing(result);
+  need(output.video.count === sampleCount, 'Output declared sample count mismatch');
+  const outputMedia = readMediaTimebase(result, output.video.mdhd);
+  need(outputMedia.timescale === media.timescale && outputMedia.duration === media.duration,
+    'Real video media duration changed');
+  for (let i = 0; i < video.count; i++) {
+    const originalSample = bytes.subarray(video.offsets[i], video.offsets[i] + video.sizes[i]);
+    const off = output.video.offsets[i];
+    const patchedSample = result.subarray(off, off + video.sizes[i]);
+    need(originalSample.length === patchedSample.length &&
+      originalSample.every((value, j) => value === patchedSample[j]),
+      'Real video sample mismatch at ' + i);
+  }
+  for (let i = video.count; i < sampleCount; i++) {
+    need(output.video.sizes[i] === fillerBytes.length &&
+      output.video.offsets[i] === trailingStart + (i - video.count) * fillerBytes.length,
+      'Non-picture samples were inserted before the original video finished');
+  }
+  return {
+    bytes: result,
+    report: {
+      mode: 'trailing diagnostic', factor, codec: video.codec,
+      originalSamples: video.count, declaredSamples: sampleCount, pseudoSamples: extra,
+      originalPicturesFirst: true, realPayloadIdentical: true,
+      sourceTimescale: media.timescale, outputTimescale: outputMedia.timescale,
+      originalDurationTicks: media.duration, outputDurationTicks: outputMedia.duration,
+      beforeBytes: bytes.length, afterBytes: result.length,
+      warning: 'Trailing filler is NOT decodable video. Full decode and TikTok Public status are unverified.'
+    }
+  };
+}
+function inspectNormalizedMp4WithTrailing(input) {
+  const bytes = asBytes(input), top = boxes(bytes, 0, bytes.length);
+  need(top.length === 4 && top[0].type === 'ftyp' && top[1].type === 'moov' &&
+    top[2].type === 'mdat' && top[3].type === 'mdat', 'Expected canonical MP4 with trailing media');
+  const track = findVideo(bytes, top[1]);
+  return { bytes, top, video: parseVideo(bytes, track.stbl, track.mdhd) };
+}
