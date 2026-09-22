@@ -75,10 +75,11 @@ function findVideo(b, moov) {
   need(vids.length === 1, 'Exactly one video track required');
   const mdia = first(b, vids[0], 'mdia'), minf = first(b, mdia, 'minf');
   const stbl = minf && first(b, minf, 'stbl');
-  need(stbl, 'Missing video sample table');
-  return stbl;
+  const mdhd = first(b, mdia, 'mdhd');
+  need(stbl && mdhd, 'Missing video sample table or media timebase');
+  return { stbl, mdhd };
 }
-function parseVideo(b, stbl) {
+function parseVideo(b, stbl, mdhd) {
   const items = children(b, stbl);
   const unsupported = ['sdtp', 'subs', 'sgpd', 'sbgp', 'saiz', 'saio', 'stsh', 'padb'];
   for (const t of items) need(!unsupported.includes(t.type), 'Unsupported video box: ' + t.type);
@@ -110,9 +111,47 @@ function parseVideo(b, stbl) {
   need(stsd && uint(b, stsd.body + 4) === 1, 'Only one sample description supported');
   const codec = word(b, stsd.body + 12);
   need(['avc1', 'avc3', 'hvc1', 'hev1'].includes(codec), 'AVC/HEVC only');
-  return { count, sizes, offsets, codec, stsz, stts, stsc, stco, stss: get('stss'), ctts: get('ctts') };
+  return { count, sizes, offsets, codec, mdhd, stsz, stts, stsc, stco, stss: get('stss'), ctts: get('ctts') };
 }
-function expandDurations(b, item, factor) {
+function readMediaTimebase(b, mdhd) {
+  need(mdhd && mdhd.size >= 24, 'Missing or truncated video mdhd');
+  const version = b[mdhd.body];
+  need(version === 0 || version === 1, 'Unsupported mdhd version');
+  const t = mdhd.body + (version === 1 ? 20 : 12);
+  const d = mdhd.body + (version === 1 ? 24 : 16);
+  need(d + (version === 1 ? 8 : 4) <= mdhd.end, 'Truncated mdhd timescale or duration');
+  const timescale = uint(b, t), duration = version === 1 ? get64(b, d) : uint(b, d);
+  need(timescale > 0 && duration > 0 && duration !== 0xffffffff,
+    'Invalid or unknown video timebase/duration');
+  return { version, timescale, duration, timescaleAt: t, durationAt: d };
+}
+function chooseTimebaseMultiplier(b, video, factor) {
+  const rows = positions(b, video.stts, 8);
+  need(rows.length > 0, 'No video time-to-sample entries');
+  const minDelta = Math.min(...rows.map((p) => uint(b, p + 4)));
+  need(minDelta > 0, 'Zero-duration video samples cannot be inflated');
+  const multiplier = Math.max(1, Math.ceil(factor / minDelta));
+  const media = readMediaTimebase(b, video.mdhd);
+  need(media.timescale * multiplier <= 0xffffffff &&
+    media.duration * multiplier <= Number.MAX_SAFE_INTEGER &&
+    (media.version === 1 || media.duration * multiplier <= 0xffffffff),
+    'Increasing the video timebase would overflow mdhd');
+  for (const p of rows) need(uint(b, p + 4) * multiplier <= 0xffffffff,
+    'Increasing the video timebase would overflow stts');
+  if (video.ctts) {
+    need([0, 1].includes(b[video.ctts.body]), 'Unsupported ctts version');
+    const signedOffset = b[video.ctts.body] === 1;
+    for (const p of positions(b, video.ctts, 8)) {
+      const old = signedOffset ? signed(b, p + 4) : uint(b, p + 4);
+      const next = old * multiplier;
+      need(Number.isSafeInteger(next) &&
+        (signedOffset ? next >= -0x80000000 && next <= 0x7fffffff : next >= 0 && next <= 0xffffffff),
+        'Increasing the video timebase would overflow composition offsets');
+    }
+  }
+  return multiplier;
+}
+function expandDurations(b, item, factor, multiplier) {
   const rows = []; let count = 0;
   function add(n, dur) {
     if (!n) return;
@@ -120,20 +159,29 @@ function expandDurations(b, item, factor) {
     else rows.push([n, dur]);
   }
   for (const p of positions(b, item, 8)) {
-    const frames = uint(b, p), duration = uint(b, p + 4);
-    need(duration >= factor, 'Timescale too small for selected density');
+    const frames = uint(b, p), duration = uint(b, p + 4) * multiplier;
     const lo = Math.floor(duration / factor), rem = duration % factor;
+    need(lo > 0, 'Sub-sample duration must remain positive');
     for (let i = 0; i < frames; i++) { add(rem, lo + 1); add(factor - rem, lo); }
     count += frames;
   }
   return { rows, count };
+}
+function scaledMediaHeader(b, mdhd, multiplier) {
+  const header = original(b, mdhd);
+  if (multiplier === 1) return header;
+  const media = readMediaTimebase(b, mdhd);
+  put(header, media.timescaleAt - mdhd.start, media.timescale * multiplier);
+  if (media.version === 1) put64(header, media.durationAt - mdhd.start, media.duration * multiplier);
+  else put(header, media.durationAt - mdhd.start, media.duration * multiplier);
+  return header;
 }
 function filler(codec) {
   return codec.startsWith('avc')
     ? Uint8Array.from([0, 0, 0, 4, 12, 255, 255, 128])
     : Uint8Array.from([0, 0, 0, 12, 76, 1, 255, 255, 255, 255, 255, 255, 255, 255, 255, 128]);
 }
-function rebuildMoov(b, moov, video, factor, shift, fakeStart, fakeSize) {
+function rebuildMoov(b, moov, video, factor, multiplier, shift, fakeStart, fakeSize) {
   const custom = new Map(), newSizes = [], newOffsets = [];
   let fake = 0;
   for (let i = 0; i < video.count; i++) {
@@ -147,7 +195,8 @@ function rebuildMoov(b, moov, video, factor, shift, fakeStart, fakeSize) {
   put(stsz, 4, 0); put(stsz, 8, newSizes.length);
   newSizes.forEach((size, i) => put(stsz, 12 + 4 * i, size));
   custom.set(video.stsz.start, box('stsz', stsz));
-  const time = expandDurations(b, video.stts, factor);
+  const time = expandDurations(b, video.stts, factor, multiplier);
+  custom.set(video.mdhd.start, scaledMediaHeader(b, video.mdhd, multiplier));
   need(time.count === video.count, 'Timing and sample count mismatch');
   custom.set(video.stts.start, table(b, video.stts, 8, time.rows));
   custom.set(video.stsc.start, table(b, video.stsc, 12, [[1, 1, 1]]));
@@ -161,8 +210,18 @@ function rebuildMoov(b, moov, video, factor, shift, fakeStart, fakeSize) {
       positions(b, video.stss, 4).map((p) => [(uint(b, p) - 1) * factor + 1])));
   }
   if (video.ctts) {
-    custom.set(video.ctts.start, table(b, video.ctts, 8,
-      positions(b, video.ctts, 8).map((p) => [uint(b, p) * factor, uint(b, p + 4)])));
+    const signedOffset = b[video.ctts.body] === 1;
+    const rows = positions(b, video.ctts, 8).map((p) => [
+      uint(b, p) * factor, (signedOffset ? signed(b, p + 4) : uint(b, p + 4)) * multiplier
+    ]);
+    const ctts = new Uint8Array(8 + rows.length * 8);
+    ctts.set(b.slice(video.ctts.body, video.ctts.body + 4)); put(ctts, 4, rows.length);
+    rows.forEach((row, i) => {
+      put(ctts, 8 + 8 * i, row[0]);
+      if (signedOffset) view(ctts).setInt32(12 + 8 * i, row[1], false);
+      else put(ctts, 12 + 8 * i, row[1]);
+    });
+    custom.set(video.ctts.start, box('ctts', ctts));
   }
   function rewrite(item) {
     if (custom.has(item.start)) return custom.get(item.start);
@@ -183,26 +242,34 @@ export function inspectNormalizedMp4(input) {
   const bytes = asBytes(input), top = boxes(bytes, 0, bytes.length);
   need(top.length === 3 && top[0].type === 'ftyp' && top[1].type === 'moov' && top[2].type === 'mdat',
     'Normalize to ftyp/moov/mdat MP4 before patching');
-  const video = parseVideo(bytes, findVideo(bytes, top[1]));
+  const located = findVideo(bytes, top[1]);
+  const video = parseVideo(bytes, located.stbl, located.mdhd);
   return { bytes, top, video };
 }
 export function buildDensity(input, factor = 10) {
   need(factor === 2 || factor === 10, 'Density factor must be 2 or 10');
   const { bytes, top, video } = inspectNormalizedMp4(input);
+  const multiplier = chooseTimebaseMultiplier(bytes, video, factor);
+  const sourceMedia = readMediaTimebase(bytes, video.mdhd);
   const fakePayload = filler(video.codec), pseudoCount = video.count * (factor - 1);
   const fake = new Uint8Array(pseudoCount * fakePayload.length);
   for (let i = 0; i < fake.length; i += fakePayload.length) fake.set(fakePayload, i);
   const secondMedia = box('mdat', fake);
-  const testMoov = rebuildMoov(bytes, top[1], video, factor, 0, 0, fakePayload.length);
+  const testMoov = rebuildMoov(bytes, top[1], video, factor, multiplier, 0, 0, fakePayload.length);
   const shift = testMoov.length - top[1].size;
   need(shift > 0 && bytes.length + shift + secondMedia.length < 0x100000000, 'Output is too large');
   const fakeStart = bytes.length + shift + 8;
-  const moov = rebuildMoov(bytes, top[1], video, factor, shift, fakeStart, fakePayload.length);
+  const moov = rebuildMoov(bytes, top[1], video, factor, multiplier, shift, fakeStart, fakePayload.length);
   need(moov.length === testMoov.length, 'MP4 offset relocation was unstable');
   const result = join(bytes.slice(0, top[0].end), moov, bytes.slice(top[2].start), secondMedia);
   const out = boxes(result, 0, result.length);
   need(out.length === 4 && out[3].type === 'mdat', 'Final MP4 structure mismatch');
-  const updated = parseVideo(result, findVideo(result, out[1]));
+  const located = findVideo(result, out[1]);
+  const updated = parseVideo(result, located.stbl, located.mdhd);
+  const outputMedia = readMediaTimebase(result, updated.mdhd);
+  need(outputMedia.timescale === sourceMedia.timescale * multiplier &&
+    outputMedia.duration === sourceMedia.duration * multiplier,
+    'Output media timebase or duration mismatch');
   need(updated.count === video.count * factor, 'Declared density count mismatch');
   for (let i = 0; i < video.count; i++) {
     const a = bytes.subarray(video.offsets[i], video.offsets[i] + video.sizes[i]);
@@ -213,7 +280,9 @@ export function buildDensity(input, factor = 10) {
   return {
     bytes: result,
     report: {
-      codec: video.codec, factor, originalSamples: video.count, declaredSamples: updated.count,
+      codec: video.codec, factor, timebaseMultiplier: multiplier,
+      sourceTimescale: sourceMedia.timescale, outputTimescale: outputMedia.timescale,
+      originalSamples: video.count, declaredSamples: updated.count,
       pseudoSamples: pseudoCount, realPayloadIdentical: true,
       beforeBytes: bytes.length, afterBytes: result.length,
       warning: 'Filler-only samples are not pictures; decoding or Public posting may fail.'
