@@ -33,7 +33,7 @@
 <p><a href="./v34.html">← Back to TikTok Studio</a></p>
 </section>
 <section class="card">
-<div class="note warn"><b>Experimental, not a Public fix.</b> This tool intentionally inserts filler-only pseudo-samples into MP4 tables. They are not real video frames. The file can cause decoding errors or stay Private / under review on TikTok, just like the NoBlur experiment. A high-quality Private preview is not proof of public-playback quality. Do not repeatedly upload a file that remains under review.</div>
+<div class="note warn"><b>Experimental, not a Public fix.</b> This tool intentionally inserts filler-only pseudo-samples into MP4 tables. They are not real video frames. The resulting file remains non-standard and may have decoding errors or stay Private / under review. Do not upload the new file before a separate decoding check. A high-quality Private preview is not proof of public-playback quality. Do not repeatedly upload a file that remains under review.</div>
 <label class="picker"><strong>Select original MP4 / MOV</strong><span>Processed locally in your browser. Keep the original.</span>
 <input id="densityFile" type="file" accept="video/*,.mp4,.mov,.m4v"/>
 </label>
@@ -41,13 +41,13 @@
 <div class="modeGrid">
 <label class="modeBox">
 <input name="densityMode" type="radio" value="10" checked/>
-<strong>NB-Reference · Density ×10</strong>
-<small>Independent 10× sample-table experiment for technical comparison. Highest risk of Private / decode errors. No quality guarantee.</small>
+<strong>Trailing Diagnostic ×10</strong>
+<small>Original compressed video samples first, then 9× non-picture filler in the tail. For offline diagnosis only; NOT a verified TikTok fix.</small>
 </label>
 <label class="modeBox">
 <input name="densityMode" type="radio" value="2"/>
-<strong>NB-Lite · Density ×2</strong>
-<small>Lower experimental sample count, still uses filler-only samples and can fail. Not a verified safe fix.</small>
+<strong>Trailing Diagnostic ×2</strong>
+<small>Original video first, then 1× non-picture filler at the tail. For diagnosis only; NOT a verified safe fix.</small>
 </label>
 </div>
 <label class="modeBox"><input id="densityConfirm" type="checkbox"/> I understand this is an intentionally non-standard MP4, not suitable for important posts or assured Public playback.</label>
@@ -65,11 +65,11 @@
 </div>
 </section>
 <section class="card">
-<div class="note"><b>Validation:</b> the program verifies sample-table count and exact preservation of original compressed video packets. This does not establish that synthetic samples decode, that Public posting works, or that TikTok reduces recompression. A standards-compliant alternative cannot be claimed to reproduce the same effect without independent public-playback evidence.</div>
+<div class="note"><b>Validation:</b> the program verifies sample-table count, checks original compressed samples occupy the complete prefix and confirms original media duration. It does not perform a full decoding test. This does not establish that synthetic samples decode, that Public posting works, or that TikTok reduces recompression. A standards-compliant alternative cannot be claimed to reproduce the same effect without independent public-playback evidence.</div>
 <p class="tiny">Maximum initial source size: 180 MiB. Large videos can exhaust Safari memory. First use a short sample and compare against the original from another account/device only after a completed Public post.</p>
 </section>
 </main>
 <footer class="shell foot">HAMODYBR Density Engine • independent experimental build</footer>
-<script type="module" src="./density-lab.js?v=2"></script>
+<script type="module" src="./density-lab.js?v=3"></script>
 </body>
 </html>
