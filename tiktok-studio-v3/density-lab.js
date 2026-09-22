@@ -2,7 +2,7 @@ import {
   Input, Output, ALL_FORMATS, BlobSource, BufferTarget, Mp4OutputFormat,
   EncodedPacketSink, EncodedVideoPacketSource, EncodedAudioPacketSource
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
-import { inspectNormalizedMp4, buildDensity } from './hamodybr-density.js?v=2';
+import { inspectNormalizedMp4, buildTrailingDensity } from './hamodybr-density.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 const fileEl = $('densityFile'), sourceEl = $('densitySource'), statusEl = $('densityStatus');
@@ -134,11 +134,11 @@ runBtn.addEventListener('click', async () => {
     const normalized = await normalize();
     updateStatus('Applying independently written sample-density patch…', 60);
     const factor = mode();
-    const built = buildDensity(normalized, factor);
+    const built = buildTrailingDensity(normalized, factor);
     updateStatus('Checking real payload identity and sample count…', 88);
     const blob = new Blob([built.bytes], { type: 'video/mp4' });
     const base = file.name.replace(/\.[^.]+$/, '') || 'video';
-    const name = base + '-hamodybr-density-' + factor + 'x-EXPERIMENT.mp4';
+    const name = base + '-hamodybr-trailing-' + factor + 'x-DIAGNOSTIC.mp4';
     outputReady(blob, name, [
       'HAMODYBR Independent Density Experiment',
       'Factor: ×' + factor + ' • NOT standards-compliant',
@@ -147,12 +147,16 @@ runBtn.addEventListener('click', async () => {
       'Declared samples: ' + built.report.declaredSamples,
       'Non-picture filler samples: ' + built.report.pseudoSamples,
       'Real compressed payload: IDENTICAL ✓',
+      'Original samples first: ' + (built.report.originalPicturesFirst ? 'YES ✓' : 'NO'),
+      'Original timescale: ' + built.report.sourceTimescale,
+      'Output timescale: ' + built.report.outputTimescale,
       'Normalized input: ' + formatSize(normalized.byteLength),
       'Experimental output: ' + formatSize(blob.size),
       'No real new video detail or frames have been created.',
-      'Unverified for TikTok Public playback. Private/review or decoding failure is possible.'
+      'Only the original-picture prefix was structurally verified. The added samples are NOT decodable frames.',
+      'Full decoding and TikTok Public playback NOT verified. Do not upload before a separate decoder check.'
     ].join('\n'));
-    updateStatus('Local patch finished. Public quality and TikTok processing NOT verified.', 100);
+    updateStatus('Structure checked; full decoding NOT verified. Do not upload yet.', 100);
   } catch (e) {
     updateStatus('Experiment failed: ' + describeError(e), 0);
   } finally {
