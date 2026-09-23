@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SMOOTH_4K,COMPAT_4K,makeSmoothPlan,validateSmoothOutput,isHlg,isBt2020,isMain10} from './smooth4k-plan.mjs';
+import {SMOOTH_4K,COMPAT_4K,makeSmoothPlan,validateSmoothOutput,isHlg,isBt2020,isMain10,makeVideoConversionOptions} from './smooth4k-plan.mjs';
 
 const hdr = {transfer:'hlg',primaries:'bt2020',matrix:'bt2020-ncl'};
 const sdr = {transfer:'bt709',primaries:'bt709',matrix:'bt709'};
@@ -59,4 +59,20 @@ test('no HDR inference from PQ, no Main10 assumption for Main profile',()=>{
   assert.equal(isHlg({transfer:'smpte2084'}),false);
   assert.equal(SMOOTH_4K.fps,30);
   assert.equal(COMPAT_4K.fps,30);
+});
+
+test('Mediabunny conversion must explicitly include fit for native 4K dimensions',()=>{
+  const marker={type:'Quality instance'};
+  for(const src of [source,{...source,codec:'avc',color:sdr},{...source,width:2160,height:3840}]){
+    const plan=makeSmoothPlan(src);
+    const options=makeVideoConversionOptions(plan,marker);
+    assert.equal(options.fit,'contain');
+    assert.equal(options.width,plan.width);
+    assert.equal(options.height,plan.height);
+    assert.equal(options.frameRate,plan.targetFps);
+    assert.equal(options.codec,plan.codec);
+    assert.equal(options.quality,marker);
+    assert.equal(options.forceTranscode,true);
+  }
+  assert.throws(()=>makeVideoConversionOptions(null,marker),/Invalid Smooth/);
 });
