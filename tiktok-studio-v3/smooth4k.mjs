@@ -3,7 +3,7 @@ import {
   BufferTarget, Quality, canEncodeVideo, EncodedPacketSink
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
 import { addForgeLikeTrackFile, inspectForgeReadyFile } from '../forge-audio-lab/forge-track.mjs?v=6';
-import { makeSmoothPlan, validateSmoothOutput, isHlg, isBt2020 } from './smooth4k-plan.mjs?v=1';
+import { makeSmoothPlan, validateSmoothOutput } from './smooth4k-plan.mjs?v=2';
 
 const $ = id => document.getElementById(id);
 const mib = n => (n / 1048576).toFixed(2) + ' MB';
@@ -34,8 +34,11 @@ function clearResult() {
 }
 function refresh() {
   $('run').disabled = busy || !plan || !$('agree').checked;
+  $('run').textContent = plan?.colorMode === 'sdr' ? 'إنشاء 4K SDR Compatibility (H.264)' : 'إنشاء Smooth 4K HDR (HEVC)';
   $('stop').hidden = !busy; $('stop').disabled = !busy || !conversion;
   $('fpsTarget').textContent = plan ? plan.targetFps.toFixed(3) + 'fps • real-time' : '30fps • real-time';
+  $('videoTarget').textContent = plan ? (plan.codec === 'hevc' ? 'HEVC Main10' : 'H.264 AVC') + ' • ' + (plan.bitrate / 1e6).toFixed(1) + ' Mbps target' : 'Auto • HDR HEVC / SDR H.264';
+  $('colorTarget').textContent = plan ? (plan.colorMode === 'hlg' ? 'HLG BT.2020 • no tone mapping' : 'SDR BT.709 • no tone mapping') : 'Detect source color before encoding';
 }
 function colorString(color) { return [color?.primaries, color?.transfer, color?.matrix].filter(Boolean).join(' / ') || 'Unknown'; }
 
@@ -80,6 +83,7 @@ async function checkSource(f, token) {
   ]);
   if (token !== selected) return;
   const fps = fpsMetric.bestGuessFrameRate;
+  $('codec').textContent = String(codec).toUpperCase();
   $('resolution').textContent = w + ' × ' + h;
   $('fps').textContent = Number.isFinite(fps) ? fps.toFixed(3) : 'Unknown';
   $('color').textContent = colorString(color);
@@ -89,15 +93,17 @@ async function checkSource(f, token) {
   if (!Number.isFinite(duration) || duration <= 0) throw new Error('مدة الفيديو غير صحيحة.');
   const p = makeSmoothPlan({width:w,height:h,fps,codec,color,preserveFps:$('preserveFps').checked});
   const q = new Quality({bitrate:p.bitrate,bitrateMode:'constant'});
-  const supported = await canEncodeVideo('hevc', {
+  const supported = await canEncodeVideo(p.codec, {
     width:p.width,height:p.height,quality:q,hardwareAcceleration:'prefer-hardware'
   }).catch(() => false);
   if (token !== selected) return;
-  if (!supported) throw new Error('متصفح هذا الجهاز لا يدعم ترميز HEVC بدقة 4K. ما راح نحول إلى SDR أو 1080p بصمت.');
+  if (!supported) throw new Error('متصفح هذا الجهاز لا يدعم ترميز '+p.codec.toUpperCase()+' بدقة 4K. ما راح نقلل الدقة أو نغيّر نظام الألوان بصمت.');
   source = { width:w,height:h,fps,duration,rotation:rot,color };
   input = opened; video = v; audio = a; plan = p;
   $('analysis').className = 'note ok';
-  $('analysis').textContent = 'جاهز للفحص التجريبي • HEVC / HLG BT.2020 تم تأكيدها • ترميز 4K مدعوم مبدئياً. راح نتحقق من Main10 ومدة الفيديو والصوت بعد التنفيذ. هذا الفحص لا يضمن نجاح الترميز على الجهاز.';
+  $('analysis').textContent = p.colorMode === 'hlg'
+    ? 'المصدر '+codec.toUpperCase()+' / HLG BT.2020. اخترنا وصفة B: HEVC Main10 4K / '+p.targetFps.toFixed(2)+'fps / 18.6Mbps. يتم تدقيق Main10 والصوت بعد الترميز.'
+    : 'المصدر '+codec.toUpperCase()+' / SDR BT.709. اخترنا تلقائياً وضع 4K Compatibility: H.264 / '+p.targetFps.toFixed(2)+'fps / 22.1Mbps. هذا ليس HDR B ولن نضيف ألوان HDR وهمية. افحص النتيجة قبل TikTok.';
   progress(100,'فحص المصدر اكتمل',mib(f.size));
   report('اختر إعداداتك، وافق على التنبيه، ثم ابدأ.');
   refresh();
@@ -167,7 +173,7 @@ $('run').addEventListener('click', async () => {
   try {
     progress(2,'المرحلة 1/4: فحص بصمة الصوت الأساسي…');
     const sourceAudio = await fingerprint(audio);
-    progress(9,'المرحلة 2/4: بدء ترميز HEVC Main10 محلياً…','هدف 18.6 Mbps');
+    progress(9,'المرحلة 2/4: بدء ترميز '+activePlan.codec.toUpperCase()+' محلياً…','هدف '+(activePlan.bitrate/1e6).toFixed(1)+' Mbps');
     await sleepFrame();
     const q = new Quality({bitrate:activePlan.bitrate,bitrateMode:'constant'});
     const target = new BufferTarget();
@@ -176,12 +182,12 @@ $('run').addEventListener('click', async () => {
       input,output:out,tracks:'primary',copy:{mode:'preferred'},showWarnings:false,
       video:{
         width:activePlan.width,height:activePlan.height,frameRate:activePlan.targetFps,
-        codec:'hevc',quality:q,keyFrameInterval:activePlan.keyFrameInterval,
+        codec:activePlan.codec,quality:q,keyFrameInterval:activePlan.keyFrameInterval,
         hardwareAcceleration:'prefer-hardware',forceTranscode:true
       }
     });
     if (!conversion.isValid || !conversion.utilizedTracks.includes(video) || !conversion.utilizedTracks.includes(audio))
-      throw new Error('محرّك المعالجة رفض إعداد HEVC / AAC. لا توجد نتيجة.');
+      throw new Error('محرّك المعالجة رفض إعداد '+activePlan.codec.toUpperCase()+' / AAC. لا توجد نتيجة.');
     refresh();
     conversion.onProgress = p => {
       const fraction = Math.max(0,Math.min(1,p));
@@ -192,7 +198,7 @@ $('run').addEventListener('click', async () => {
     conversion=null;refresh();
     if (!target.buffer) throw new Error('لم ينتج المحرك ملف MP4.');
     let blob = new Blob([target.buffer],{type:'video/mp4'});
-    progress(80,'المرحلة 3/4: تدقيق 10-bit/HDR/FPS والصوت…',mib(blob.size));
+    progress(80,'المرحلة 3/4: تدقيق '+(activePlan.colorMode === 'hlg' ? '10-bit/HDR' : 'SDR BT.709')+'/FPS والصوت…',mib(blob.size));
     const checked = await verifyEncoded(blob,sourceAudio,activePlan);
     if (useForge) {
       progress(88,'المرحلة 4/4: تطبيق مسار Forge المجرب بدون تعديل الصوت الأساسي…');
@@ -211,20 +217,20 @@ $('run').addEventListener('click', async () => {
     outputUrl = URL.createObjectURL(outputFile);
     $('download').href = outputUrl; $('download').download = name;
     $('share').hidden = !(navigator.share && navigator.canShare?.({files:[outputFile]}));
-    $('resultText').textContent = 'الحجم '+mib(f.size)+' → '+mib(blob.size)+' • 4K / '+checked.actualFps.toFixed(3)+'fps • HLG BT.2020 • الصوت الأصلي مطابق'+(useForge?' • مسار Forge التجريبي مضاف':'');
+    $('resultText').textContent = 'الحجم '+mib(f.size)+' → '+mib(blob.size)+' • 4K / '+checked.actualFps.toFixed(3)+'fps • '+(activePlan.colorMode === 'hlg' ? 'HLG BT.2020' : 'SDR BT.709')+' • الصوت الأصلي مطابق'+(useForge?' • مسار Forge التجريبي مضاف':'');
     $('report').textContent = [
-      'Video: HEVC Main10 ('+checked.decoderCodec+')',
+      'Video: '+activePlan.codec.toUpperCase()+' ('+checked.decoderCodec+')',
       'Frame packets: '+checked.frameStats.packetCount,
       'Source duration: '+source.duration.toFixed(3)+' s',
       'Output FPS: '+checked.actualFps.toFixed(3),
-      'Bitrate target: 18.6 Mbps (actual may vary)',
+      'Bitrate target: '+(activePlan.bitrate/1e6).toFixed(1)+' Mbps (actual may vary)',
       'Primary AAC packets: '+checked.audio.packets+'; bytes: '+checked.audio.bytes,
       'Forge experiment: '+(useForge?'ON (deliberately invalid secondary AAC)':'OFF'),
       'TikTok playback quality: must be checked after upload'
     ].join('\n');
     $('result').classList.add('show');
     progress(100,'الملف التجريبي جاهز',mib(blob.size));
-    report('اكتمل فحص 4K / HDR / Main10 / الصوت بنجاح. تأكد من التشغيل على جهازك قبل الرفع.');
+    report('اكتمل فحص 4K / '+(activePlan.colorMode === 'hlg' ? 'HDR / Main10' : 'SDR BT.709')+' / الصوت بنجاح. تأكد من التشغيل قبل الرفع.');
   } catch(e) {
     console.error(e);
     clearResult();
@@ -239,4 +245,5 @@ $('share').addEventListener('click', async () => {
   if (!outputFile) return;
   try { await navigator.share({files:[outputFile],title:'HAMODYBR Smooth 4K HDR V3.5 Test'}); } catch(e) { if (e?.name!=='AbortError') report('المشاركة لم تكتمل: '+e.message,true); }
 });
+$('engine').textContent = 'المعالجة محلية بالكامل. يحدد الموقع نوع المصدر وألوانه ثم يختار HDR (HEVC) أو SDR (H.264)؛ لن يضيف HDR إلى مصدر SDR.';
 refresh();
