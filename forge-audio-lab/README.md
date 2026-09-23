@@ -62,3 +62,10 @@ Keep the previously successful Forge original as control; test this generated va
 - The six-byte AAC-LC silent frame `21 10 04 60 8C 1C` with ASC `11 90` was validated by a strict FFmpeg AAC decode; the standalone sound is encoded silence. Subsequent experimental secondary AAC packets remain deliberately invalid, as before.
 - This additional AAC silence step runs only when the source truly has no audio. Non-AAC original sound is *not* discarded or replaced. Remux memory caps remain in effect.
 - Automated tests exercise both fragmented and ordinary silent stock-video cases, comparing source and final video packet MD5s, inspecting AAC, and strictly decoding video and primary audio.
+
+## HEVC SDR preparation (V1.7 experimental)
+
+- Compatible HEVC SDR Pexels video gets an **optional** local decode/re-encode stage using Mediabunny's H.264 encoder (nominal target bitrate 6–22 Mbps depending on source resolution), keyframe interval 1 second and original frame rate. This is **not lossless** and is not identical to Forge's private encoder. MP4 audio is kept as AAC and its compressed packet stream is verified against the original; if a source is silent, a valid AAC silent primary track is generated as before.
+- Guardrails: check HEVC decodability and H.264 encodability on the current device; reject explicitly tagged HDR/PQ/HLG sources because this path has no validated tone mapping. Unsupported codecs, AAC formats and 4K+ sizes continue to return specific errors. An SDR tag alone does not guarantee color parity in every browser.
+- Because this path decodes+re-encodes, the in-memory input cap is 160 MiB on mobile and 360 MiB on desktop. Other AVC MP4 file paths retain their previous caps.
+- The site reports whether HEVC conversion happened. The existing Forge AAC sample-table patch is used only after the converted MP4 is checked as AVC/AAC. TikTok quality must be checked on actual posts; automated tests only check media structure and stream decode.
