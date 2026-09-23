@@ -19,23 +19,23 @@ input[type=checkbox]{accent-color:#6558f5}.checks{display:grid;gap:12px;margin:1
 <body>
 <header class="shell top"><div class="brand">HAMODYBR<small>VIDEO FORGE</small></div><span class="lab">V3.5 PRIVATE PREVIEW</span></header>
 <main class="shell">
-<section class="hero"><h1>Smooth <span>4K HDR</span></h1><p>تجربة الإعداد B الذي اخترته: 4K / 30fps / HEVC Main10 / HLG BT.2020 / نحو 18.6 Mbps. مدة الفيديو الأصلية لا تتغير.</p></section>
+<section class="hero"><h1>Smooth <span>4K HDR / SDR</span></h1><p>الموقع يفحص الفيديو أولاً: إذا كان HLG BT.2020 يستعمل إعداد B (HEVC Main10 / 18.6 Mbps)، وإذا كان SDR BT.709 يستعمل وضع 4K Compatibility (H.264 / 22.1 Mbps). معدل 30fps ومدة الفيديو الأصلية ثابتة. بدون HDR وهمي.</p></section>
 <section class="card">
 <div class="note warn"><b>النسخة الأساسية V3.4 ما تغيرت.</b> هذا مسار تجريبي مستقل يعيد ترميز الصورة لتقليل الحجم والإطارات؛ ما نقدر نضمن احتفاظ TikTok بدقة 4K. <a href="./v34.html">الرجوع إلى V3.4</a>.</div>
 <div class="note" id="engine">جاري تحميل وفحص قدرات المتصفح…</div>
 <label class="picker"><strong>اختر فيديو 4K أصلي</strong><span>MP4 / MOV • يبقى على جهازك • لا يوجد رفع إلى سيرفر</span><input id="file" type="file" accept="video/*,.mp4,.mov,.m4v"></label>
 <div class="meta" id="meta" hidden>
 <div class="stat"><b id="name">—</b><span>الملف</span></div><div class="stat"><b id="size">—</b><span>الحجم</span></div>
-<div class="stat"><b id="resolution">—</b><span>الدقة</span></div><div class="stat"><b id="fps">—</b><span>FPS</span></div>
+<div class="stat"><b id="codec">—</b><span>Codec الأصلي</span></div><div class="stat"><b id="resolution">—</b><span>الدقة</span></div><div class="stat"><b id="fps">—</b><span>FPS</span></div>
 <div class="stat"><b id="color">—</b><span>الألوان</span></div><div class="stat"><b id="duration">—</b><span>المدة</span></div>
 </div>
-<div class="preset"><div><b>Video</b><span>HEVC Main10 • 18.6 Mbps target</span></div><div><b>Color</b><span>HLG BT.2020 • no tone mapping</span></div><div><b>FPS</b><span id="fpsTarget">30fps • real-time</span></div><div><b>Audio</b><span>AAC primary packet copy + optional original Forge experiment</span></div></div>
+<div class="preset"><div><b>Video</b><span id="videoTarget">Auto • HDR HEVC / SDR H.264</span></div><div><b>Color</b><span id="colorTarget">Detect source color before encoding</span></div><div><b>FPS</b><span id="fpsTarget">30fps • real-time</span></div><div><b>Audio</b><span>AAC primary packet copy + optional original Forge experiment</span></div></div>
 <div class="checks">
 <label class="check"><input id="preserveFps" type="checkbox"><span>Preserve Source FPS (اختياري؛ يبقي حتى 60fps بدل 30)</span></label>
 <label class="check"><input id="forge" type="checkbox" checked><span>إضافة مسار Forge التجريبي الأصلي مثل اختبار B (المسار الثاني غير صالح عمداً؛ ممكن بعض التطبيقات ترفضه). لا نغيّر مسار Forge أو نضيفه مرتين.</span></label>
 <label class="check"><input id="agree" type="checkbox"><span>أفهم أن هذه تجربة، وقد يفشل ترميز HDR على جهازي، وأحتفظ بالملف الأصلي.</span></label>
 </div>
-<div class="note warn" id="analysis">اختيار الفيديو سيبدأ فحص HEVC / HLG / 10-bit ودعم الترميز بدقة 4K.</div>
+<div class="note warn" id="analysis">اختيار الفيديو سيبدأ فحص codec وألوان المصدر ودعم ترميز 4K. إذا كانت معلومات الألوان غير مؤكدة، لن نجري تحويلاً عشوائياً.</div>
 <div class="actions"><button class="btn" id="run" disabled>إنشاء Smooth 4K</button><button class="btn danger" id="stop" hidden disabled>إيقاف</button></div>
 <div class="progress"><i id="bar"></i></div><div class="progressInfo"><span id="phase">بانتظار الملف</span><span id="numbers">0%</span></div>
 <p class="status" id="status" role="status" aria-live="polite">لا يتم رفع الفيديو إلى أي سيرفر.</p>
@@ -44,5 +44,5 @@ input[type=checkbox]{accent-color:#6558f5}.checks{display:grid;gap:12px;margin:1
 </section>
 </main>
 <footer class="shell foot">HAMODYBR • Experimental Smooth 4K HDR • V3.4 remains unchanged</footer>
-<script type="module" src="./smooth4k.mjs?v=1"></script>
+<script type="module" src="./smooth4k.mjs?v=2"></script>
 </body></html>
