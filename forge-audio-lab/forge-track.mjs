@@ -50,7 +50,7 @@ function verifyInput({a,top,moov,moovFile,mdat,fullSize}){
  if(!['avc1','avc3'].includes(codecFromTrack(a,videos[0])))fail('Requires H.264 (AVC) video. Preprocess HDR/HEVC first.');
  const audio=audios[0],stbl=stblFromTrack(a,audio),mdhd=child(a,child(a,audio,'mdia'),'mdhd');
  const time=versionedDuration(a,mdhd);
- if(time.scale!==48000)fail('Forge reference uses 48kHz AAC. Convert other sample rates before this experiment.');
+ if(!Number.isInteger(time.scale) || time.scale<=0 || !Number.isFinite(time.seconds))fail('Invalid AAC media timescale');
  const stts=child(a,stbl,'stts'),stsc=child(a,stbl,'stsc'),stsz=child(a,stbl,'stsz');
  const stco=children(a,stbl).find(b=>b.type==='stco'||b.type==='co64');
  if(!stco)fail('Audio chunk offsets missing');
@@ -109,7 +109,7 @@ function buildPlan(x){
    }
  }
  if(tailCount!==1)fail('Synthetic track offset could not be written');
- return {newMoov,tail,report:{sourceBytes:fullSize,outputBytes:fullSize+delta+tail.length,videoAndOriginalAudio:'Packet payloads unchanged (no transcode)',originalAudioSamples:samples,secondAudioSamples:samples+TAIL_COUNT,addedTailPackets:TAIL_COUNT,addedTailBytes:tail.length,originalDeclaredAudioSeconds:x.time.seconds,mp4MoovGrowthBytes:delta,chunkOffsetsPatched:patchCount,tailOutsideMdat:true,note:'Secondary AAC track intentionally invalid; platform behavior not guaranteed.'}};
+ return {newMoov,tail,report:{sourceBytes:fullSize,outputBytes:fullSize+delta+tail.length,videoAndOriginalAudio:'Packet payloads unchanged (no transcode)',originalAudioSamples:samples,secondAudioSamples:samples+TAIL_COUNT,addedTailPackets:TAIL_COUNT,addedTailBytes:tail.length,originalDeclaredAudioSeconds:x.time.seconds,originalAudioTimescale:x.time.scale,mp4MoovGrowthBytes:delta,chunkOffsetsPatched:patchCount,tailOutsideMdat:true,note:'Secondary AAC track intentionally invalid; platform behavior not guaranteed.'}};
 }
 async function readTop(file){
  if(!file||typeof file.size!=='number'||typeof file.slice!=='function')fail('Choose an MP4 video file');
@@ -140,7 +140,7 @@ async function readTop(file){
 }
 export async function inspectForgeReadyFile(file){
  const x=verifyInput(await readTop(file));
- return {videoCodec:codecFromTrack(x.a,x.tracks.find(b=>aTrackKind(x.a,b)==='vide')),audioCodec:'mp4a',samples:x.samples,audioSeconds:x.time.seconds,sizeBytes:file.size,tailPackets:TAIL_COUNT};
+ return {videoCodec:codecFromTrack(x.a,x.tracks.find(b=>aTrackKind(x.a,b)==='vide')),audioCodec:'mp4a',samples:x.samples,audioSeconds:x.time.seconds,sizeBytes:file.size,audioTimescale:x.time.scale,tailPackets:TAIL_COUNT};
 }
 export async function addForgeLikeTrackFile(file){
  const x=verifyInput(await readTop(file)),plan=buildPlan(x);
