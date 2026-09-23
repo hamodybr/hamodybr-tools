@@ -69,3 +69,11 @@ Keep the previously successful Forge original as control; test this generated va
 - Guardrails: check HEVC decodability and H.264 encodability on the current device; reject explicitly tagged HDR/PQ/HLG sources because this path has no validated tone mapping. Unsupported codecs, AAC formats and 4K+ sizes continue to return specific errors. An SDR tag alone does not guarantee color parity in every browser.
 - Because this path decodes+re-encodes, the in-memory input cap is 160 MiB on mobile and 360 MiB on desktop. Other AVC MP4 file paths retain their previous caps.
 - The site reports whether HEVC conversion happened. The existing Forge AAC sample-table patch is used only after the converted MP4 is checked as AVC/AAC. TikTok quality must be checked on actual posts; automated tests only check media structure and stream decode.
+
+## HEVC HDR / HLG copy-through experiment (V1.8)
+
+- On ordinary nonfragmented MP4, HEVC sample descriptions `hvc1` and `hev1` are now accepted. No video decode, re-encode or tone map occurs: the entire original HEVC payload and color metadata are preserved while the experimental AAC track is appended.
+- On genuinely fragmented HEVC, the preparation remux defaults to forced packet copy for the primary HEVC video and AAC audio. Video and audio encoded packets are hashed before and after remux. If a source has no audio, the valid silent AAC addition remains available.
+- The earlier HEVC SDR to H.264 conversion remains available only through explicit `normalizeFragmentedFile(..., {videoMode:'avc-sdr'})` in the internal API; it is **not** the default for HDR footage and is not shown as a public automatic option.
+- Tests generate genuine 10-bit HLG BT.2020 HEVC and verify compressed video/audio bytes, video color primaries/transfer/space, two original playable streams and the 6,912-packet experimental AAC on regular and fragmented MP4s.
+- **Important**: this experiment does not reproduce Forge's full video transcode (reference Forge is H.264 SDR) and has not established whether TikTok preserves HEVC HDR playback or upload quality on the user's actual Pexels file. It deliberately avoids applying unverified SDR tone mapping.
