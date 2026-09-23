@@ -67,7 +67,8 @@ function verifyInput({a,top,moov,moovFile,mdat,fullSize,syntheticTailStart=null}
  const audios=tracks.filter(b=>aTrackKind(a,b)==='soun');
  const videos=tracks.filter(b=>aTrackKind(a,b)==='vide');
  if(videos.length!==1)fail('Requires exactly one video track; found '+videos.length);
- if(!['avc1','avc3'].includes(codecFromTrack(a,videos[0])))fail('Requires H.264 (AVC) video. Preprocess HDR/HEVC first.');
+ const videoCodec=codecFromTrack(a,videos[0]);
+ if(!['avc1','avc3','hvc1','hev1'].includes(videoCodec))fail('Unsupported video codec '+videoCodec+'. This lab supports AVC and HEVC in MP4.');
  const aacs=audios.filter(b=>codecFromTrack(a,b)==='mp4a');
  if(!aacs.length)fail('Requires at least one AAC audio track; found '+audios.length+' audio tracks');
  // Use the first AAC track and preserve any additional original audio/metadata tracks.
@@ -90,7 +91,7 @@ function verifyInput({a,top,moov,moovFile,mdat,fullSize,syntheticTailStart=null}
  if(syntheticTailStart!==null && !otherAac)fail('Forge-like trailing data exists but no matching secondary AAC track was found');
  if(otherAac && syntheticTailStart===null)fail('Secondary Forge track exists but the synthetic tail is missing');
  const alreadyProcessed=!!otherAac;
- return {a,top,moov,moovFile,mdat,fullSize,tracks,audio,stbl,stts,stsc,stsz,stco,mdhd,time,samples,chunkCount,scEntries,descIndex,audioTrackCount:audios.length,alreadyProcessed};
+ return {a,top,moov,moovFile,mdat,fullSize,tracks,videoCodec,audio,stbl,stts,stsc,stsz,stco,mdhd,time,samples,chunkCount,scEntries,descIndex,audioTrackCount:audios.length,alreadyProcessed};
 }
 function buildPlan(x){
  const {a,moov,moovFile,mdat,audio,stts,stsc,stsz,stco,samples,chunkCount,scEntries,descIndex,fullSize}=x;
@@ -137,7 +138,7 @@ function buildPlan(x){
    }
  }
  if(tailCount!==1)fail('Synthetic track offset could not be written');
- return {newMoov,tail,report:{sourceBytes:fullSize,outputBytes:fullSize+delta+tail.length,videoAndOriginalAudio:'Packet payloads unchanged (no transcode)',originalAudioSamples:samples,secondAudioSamples:samples+TAIL_COUNT,addedTailPackets:TAIL_COUNT,addedTailBytes:tail.length,originalDeclaredAudioSeconds:x.time.seconds,originalAudioTimescale:x.time.scale,mp4MoovGrowthBytes:delta,chunkOffsetsPatched:patchCount,tailOutsideMdat:true,note:'Secondary AAC track intentionally invalid; platform behavior not guaranteed.'}};
+ return {newMoov,tail,report:{sourceBytes:fullSize,outputBytes:fullSize+delta+tail.length,videoCodec:x.videoCodec,videoAndOriginalAudio:'Packet payloads unchanged (no transcode)',originalAudioSamples:samples,secondAudioSamples:samples+TAIL_COUNT,addedTailPackets:TAIL_COUNT,addedTailBytes:tail.length,originalDeclaredAudioSeconds:x.time.seconds,originalAudioTimescale:x.time.scale,mp4MoovGrowthBytes:delta,chunkOffsetsPatched:patchCount,tailOutsideMdat:true,note:'Secondary AAC track intentionally invalid; platform behavior not guaranteed.'}};
 }
 async function matchesForgeTail(file,offset){
  if(file.size-offset!==TAIL_COUNT*8)return false;
@@ -181,7 +182,7 @@ async function readTop(file){
 }
 export async function inspectForgeReadyFile(file){
  const x=verifyInput(await readTop(file));
- return {videoCodec:codecFromTrack(x.a,x.tracks.find(b=>aTrackKind(x.a,b)==='vide')),audioCodec:'mp4a',samples:x.samples,audioSeconds:x.time.seconds,sizeBytes:file.size,audioTimescale:x.time.scale,audioTrackCount:x.audioTrackCount,alreadyProcessed:x.alreadyProcessed,tailPackets:TAIL_COUNT};
+ return {videoCodec:x.videoCodec,audioCodec:'mp4a',samples:x.samples,audioSeconds:x.time.seconds,sizeBytes:file.size,audioTimescale:x.time.scale,audioTrackCount:x.audioTrackCount,alreadyProcessed:x.alreadyProcessed,tailPackets:TAIL_COUNT};
 }
 export async function addForgeLikeTrackFile(file){
  const x=verifyInput(await readTop(file));

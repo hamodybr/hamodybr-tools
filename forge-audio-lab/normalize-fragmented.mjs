@@ -25,7 +25,9 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
   if (!video) throw new Error('ما لقينا مسار فيديو داخل الملف المجزّأ.');
   const sourceCodec = await video.getCodec();
   if (!['avc','hevc'].includes(sourceCodec)) throw new Error('نوع الصورة غير مدعوم: '+(sourceCodec||'unknown')+'. الأداة تحتاج H.264 أو HEVC.');
-  const transcodeHevc = sourceCodec === 'hevc';
+  // Preserve HEVC/HLG/PQ by default: remux compressed packets, never apply an implicit tone map.
+  // The older HEVC-to-AVC SDR path remains available only by explicit caller opt-in.
+  const transcodeHevc = sourceCodec === 'hevc' && options.videoMode === 'avc-sdr';
   let transcodeQuality = null;
   if (transcodeHevc) {
     const maxHevc = mobile ? MAX_HEVC_MOBILE : MAX_HEVC_DESKTOP;
@@ -72,7 +74,8 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
     }
     return [hash,total,count].join(':');
   };
-  const sourceAudioHash = transcodeHevc && audio ? await hashPackets(audio) : null;
+  const sourceAudioHash = audio ? await hashPackets(audio) : null;
+  const sourceVideoHash = sourceCodec === 'hevc' && !transcodeHevc ? await hashPackets(video) : null;
   if (audio) {
     await conversion.execute();
   } else {
@@ -96,15 +99,17 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
   if (!target.buffer || !target.buffer.byteLength) throw new Error('لم ينتج ملف MP4 بعد التحويل.');
   const name = (file.name || 'video').replace(/\.mp4$/i,'') + '-hamodybr-normalized.mp4';
   const normalized = new File([target.buffer], name, { type: 'video/mp4' });
-  if (transcodeHevc) {
+  if (sourceCodec === 'hevc') {
     const check = new M.Input({formats:M.ALL_FORMATS, source:new M.BlobSource(normalized)});
     const outVideo = await check.getPrimaryVideoTrack();
-    if (!outVideo || (await outVideo.getCodec())!=='avc')throw new Error('فشل التحقق: التحويل ما أنتج صورة H.264.');
+    const expectedCodec = transcodeHevc ? 'avc' : 'hevc';
+    if (!outVideo || (await outVideo.getCodec())!==expectedCodec)throw new Error('فشل التحقق من ترميز الصورة بعد التحضير.');
+    if (sourceVideoHash && (await hashPackets(outVideo))!==sourceVideoHash)throw new Error('فشل التحقق: بيانات صورة HEVC الأصلية تغيّرت أثناء إعادة التغليف.');
     if (audio) {
       const outAudio=await check.getPrimaryAudioTrack();
       if (!outAudio || (await hashPackets(outAudio))!==sourceAudioHash)throw new Error('فشل التحقق من حفظ الصوت الأصلي بدون إعادة ترميز.');
     }
   }
   onProgress(1);
-  return {file: normalized, method: transcodeHevc?'hevc-to-avc':'encoded-packet-copy', videoTranscoded:transcodeHevc, addedSilentAudio:!audio, inputBytes:file.size, outputBytes:normalized.size};
+  return {file: normalized, method: transcodeHevc?'hevc-to-avc':'encoded-packet-copy', videoTranscoded:transcodeHevc, videoCodec:sourceCodec, hdrPreserved:sourceCodec==='hevc'&&!transcodeHevc, addedSilentAudio:!audio, inputBytes:file.size, outputBytes:normalized.size};
 }
