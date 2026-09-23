@@ -27,8 +27,8 @@ code{direction:ltr;display:inline-block;unicode-bidi:isolate;overflow-wrap:anywh
 <div class="card warn"><strong>تنبيه مهم</strong><p style="margin-bottom:0">هاي تجربة بحثية تنتج مسار AAC ثانياً غير سليم عمداً؛ بعض التطبيقات قد تتجاهله أو ترفض الملف. نجاح التشغيل المحلي ما يعني أن TikTok راح يحتفظ بالجودة. احتفظ دائماً بنسخة الفيديو الأصلية.</p></div>
 <section class="card">
 <h2 style="margin-top:0">1. اختر الفيديو</h2>
-<p class="small">يتطلب MP4 من نوع H.264 مع صوت AAC 48kHz، ومسار صوت واحد، وحاوية Fast Start. لنتيجة قابلة للمقارنة، استخدم نسخة Forge Clean السابقة. ملف iPhone HEVC/HDR الأصلي يحتاج تحويل منفصل أولاً.</p>
-<label class="file" for="source"><strong id="fileName">اضغط لاختيار فيديو MP4</strong><br><span class="small">يبقى على جهازك • لا يُرفع إلى أي سيرفر • الحد 250MB</span></label>
+<p class="small">يتطلب MP4 من نوع H.264 مع صوت AAC 48kHz، ومسار صوت واحد، وحاوية Fast Start. لنتيجة قابلة للمقارنة، استخدم نسخة Forge Clean السابقة. ملف iPhone HEVC/HDR الأصلي يحتاج تحويل منفصل أولاً. الملفات الكبيرة تحتاج مساحة تخزين كافية؛ قد يقيّد Safari الحفظ أو المشاركة حسب إصدار iOS.</p>
+<label class="file" for="source"><strong id="fileName">اضغط لاختيار فيديو MP4</strong><br><span class="small">يبقى على جهازك • لا يُرفع إلى أي سيرفر • يدعم الملفات الكبيرة حتى قرابة 3.87GB؛ بدون تحميل الفيديو كاملاً للذاكرة</span></label>
 <input id="source" type="file" accept="video/mp4,.mp4">
 <div id="details" class="grid hidden" style="margin-top:16px"><div class="stat"><span>حجم الفيديو</span><strong id="sourceSize">—</strong></div><div class="stat"><span>حزم الصوت الأساسية</span><strong id="sourceSamples">—</strong></div><div class="stat"><span>مدة الصوت</span><strong id="sourceDuration">—</strong></div><div class="stat"><span>حزم الاختبار الإضافية</span><strong>6,912</strong></div></div>
 <p class="small status" id="status" role="status" aria-live="polite">بانتظار اختيار الفيديو.</p><progress id="progress" max="100" value="0" class="hidden"></progress>
@@ -39,33 +39,33 @@ code{direction:ltr;display:inline-block;unicode-bidi:isolate;overflow-wrap:anywh
 <footer>HAMODYBR Tools • Separate research lab • V3.4 unchanged</footer>
 </main>
 <script type="module">
-import {inspectForgeReady,addForgeLikeTrack} from './forge-track.mjs';
-const $=id=>document.getElementById(id), fmt=n=>(n/1048576).toFixed(2)+' MB';
-let sourceBytes=null, sourceFile=null, downloadURL=null, outputBlob=null;
+import {inspectForgeReadyFile,addForgeLikeTrackFile} from './forge-track.mjs?v=2';
+const $=id=>document.getElementById(id), fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
+let sourceFile=null, ready=false, busy=false, selectionSerial=0, downloadURL=null, outputBlob=null;
 function status(message,level=''){ $('status').textContent=message;$('status').style.color=level==='error'?'#ffb6a5':level==='ok'?'#8de5ca':'#c2c8da'; }
-function resetOutput(){ $('result').classList.add('hidden');$('progress').classList.add('hidden');if(downloadURL){URL.revokeObjectURL(downloadURL);downloadURL=null;}outputBlob=null;}
-function refresh(){ $('run').disabled=!sourceBytes||!$('agree').checked; }
+function resetOutput(){ $('result').classList.add('hidden');if(downloadURL){URL.revokeObjectURL(downloadURL);downloadURL=null;}outputBlob=null; }
+function refresh(){ $('run').disabled=!sourceFile||!ready||busy||!$('agree').checked; }
+function progress(percent){$('progress').classList.remove('hidden');$('progress').value=percent;}
 $('agree').addEventListener('change',refresh);
-$('source').addEventListener('change',()=>{
-  const f=$('source').files?.[0];sourceBytes=null;sourceFile=null;resetOutput();$('details').classList.add('hidden');refresh();if(!f)return;
-  $('fileName').textContent=f.name;
-  const r=new FileReader();$('progress').classList.remove('hidden');$('progress').value=0;
-  r.onprogress=e=>{if(e.lengthComputable){$('progress').value=Math.round(e.loaded/e.total*100);status('قراءة الملف محلياً… '+$('progress').value+'%');}};
-  r.onerror=()=>{status('تعذرت قراءة الفيديو من جهازك.','error');refresh();};
-  r.onload=()=>{try{const bytes=new Uint8Array(r.result),metrics=inspectForgeReady(bytes);sourceBytes=bytes;sourceFile=f;
-    $('sourceSize').textContent=fmt(metrics.sizeBytes);$('sourceSamples').textContent=metrics.samples.toLocaleString('en');$('sourceDuration').textContent=metrics.audioSeconds.toFixed(3)+' sec';$('details').classList.remove('hidden');status('الملف مناسب للتجربة. الصورة والصوت الأساسي راح يبقون بدون إعادة ضغط.','ok');
-  }catch(e){status('هذا الملف غير مناسب: '+e.message,'error');}finally{$('progress').classList.add('hidden');refresh();}};
-  r.readAsArrayBuffer(f);
+$('source').addEventListener('change',async()=>{
+ const f=$('source').files?.[0];const token=++selectionSerial;sourceFile=null;ready=false;resetOutput();$('details').classList.add('hidden');$('progress').classList.add('hidden');refresh();if(!f)return;
+ $('fileName').textContent=f.name;progress(10);status('جاري فحص جداول MP4 فقط؛ الفيديو الكبير يبقى على الجهاز…');
+ try{await new Promise(resolve=>requestAnimationFrame(resolve));const metrics=await inspectForgeReadyFile(f);
+   if(token!==selectionSerial)return;
+   sourceFile=f;ready=true;$('sourceSize').textContent=fmt(metrics.sizeBytes);$('sourceSamples').textContent=metrics.samples.toLocaleString('en');$('sourceDuration').textContent=metrics.audioSeconds.toFixed(3)+' sec';$('details').classList.remove('hidden');progress(100);
+   status('الملف مناسب للتجربة. الصورة والصوت الأساسي راح يبقون بدون إعادة ضغط.','ok');
+ }catch(e){if(token===selectionSerial)status('هذا الملف غير مناسب: '+e.message,'error');}
+ finally{if(token===selectionSerial){$('progress').classList.add('hidden');refresh();}}
 });
 $('run').addEventListener('click',async()=>{
- if(!sourceBytes||!$('agree').checked)return;const button=$('run');button.disabled=true;resetOutput();status('جاري إنشاء مسار AAC الإضافي وتحديث جداول MP4…');
- await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
- try{const {output,report}=addForgeLikeTrack(sourceBytes);outputBlob=new Blob([output],{type:'video/mp4'});
+ if(!sourceFile||!ready||busy||!$('agree').checked)return;busy=true;refresh();resetOutput();progress(15);status('جاري تحديث جداول MP4 لمسار AAC الثاني…');
+ await new Promise(resolve=>requestAnimationFrame(resolve));
+ try{const {output,report}=await addForgeLikeTrackFile(sourceFile);progress(70);outputBlob=output;
  const filename=(sourceFile.name.replace(/\.mp4$/i,'')||'video')+'-hamodybr-forge-track-test.mp4';
  downloadURL=URL.createObjectURL(outputBlob);$('download').href=downloadURL;$('download').download=filename;
  $('report').textContent=`${fmt(report.outputBytes)} • صورة المصدر والصوت الأساسي بلا إعادة ترميز • المسار الإضافي ${report.secondAudioSamples.toLocaleString('en')} حزمة، منها ${report.addedTailPackets.toLocaleString('en')} حزمة اصطناعية.`;
- $('result').classList.remove('hidden');$('share').classList.toggle('hidden',!navigator.canShare);status('نجح إنشاء الحاوية التجريبية محلياً.','ok');
- }catch(e){status('فشل إنشاء الفيديو: '+e.message,'error');}finally{refresh();}
+ $('result').classList.remove('hidden');$('share').classList.toggle('hidden',!navigator.canShare);progress(100);status('نجح إنشاء الحاوية التجريبية محلياً. استخدم التحميل أو المشاركة لحفظ الفيديو.','ok');
+ }catch(e){status('فشل إنشاء الفيديو: '+e.message,'error');}finally{busy=false;$('progress').classList.add('hidden');refresh();}
 });
 $('share').addEventListener('click',async()=>{if(!outputBlob||!navigator.share)return;const file=new File([outputBlob],$('download').download,{type:'video/mp4'});if(navigator.canShare?.({files:[file]}))try{await navigator.share({files:[file]});}catch(e){if(e.name!=='AbortError')status('تعذرت المشاركة؛ استخدم زر التحميل.','error');}else status('مشاركة الملفات غير مدعومة هنا؛ استخدم التحميل.');});
 </script>

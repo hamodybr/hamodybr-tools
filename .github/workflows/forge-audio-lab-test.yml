@@ -1,0 +1,41 @@
+name: Forge Audio Lab validation
+
+on:
+  pull_request:
+    paths:
+      - 'forge-audio-lab/**'
+      - '.github/workflows/forge-audio-lab-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'forge-audio-lab/**'
+      - '.github/workflows/forge-audio-lab-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install FFmpeg for MP4 regression tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -n 1
+      - name: Validate JavaScript
+        run: |
+          node --check forge-audio-lab/forge-track.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          page = Path('forge-audio-lab/index.html').read_text()
+          code = page.split('<script type="module">',1)[1].split('</script>',1)[0]
+          Path('/tmp/forge-lab-ui.mjs').write_text(code)
+          PY
+          node --check /tmp/forge-lab-ui.mjs
+      - name: Run container and large-file tests
+        run: node --test forge-audio-lab/test-large.mjs
