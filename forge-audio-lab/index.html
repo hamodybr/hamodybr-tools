@@ -21,7 +21,7 @@ code{direction:ltr;display:inline-block;unicode-bidi:isolate;overflow-wrap:anywh
 </head>
 <body><main>
 <div class="brand">HAMODY<span>BR</span> / PRIVATE VIDEO LAB</div>
-<div class="tag">EXPERIMENT • FORGE AUDIO TRACK</div>
+<div class="tag">EXPERIMENT • FORGE AUDIO TRACK V1.3</div>
 <h1>تجربة مسار الصوت الإضافي</h1>
 <p>نكرر البنية اللي رصدناها بملف Forge: نسخة ثانية من الصوت، وبعدها 6,912 حزمة AAC اصطناعية. <b>الفيديو والصوت الأساسي يظلّون بدون إعادة ترميز.</b></p>
 <div class="card warn"><strong>تنبيه مهم</strong><p style="margin-bottom:0">هاي تجربة بحثية تنتج مسار AAC ثانياً غير سليم عمداً؛ بعض التطبيقات قد تتجاهله أو ترفض الملف. نجاح التشغيل المحلي ما يعني أن TikTok راح يحتفظ بالجودة. احتفظ دائماً بنسخة الفيديو الأصلية.</p></div>
@@ -39,7 +39,7 @@ code{direction:ltr;display:inline-block;unicode-bidi:isolate;overflow-wrap:anywh
 <footer>HAMODYBR Tools • Separate research lab • V3.4 unchanged</footer>
 </main>
 <script type="module">
-import {inspectForgeReadyFile,addForgeLikeTrackFile} from './forge-track.mjs?v=2';
+import {inspectForgeReadyFile,addForgeLikeTrackFile} from './forge-track.mjs?v=3';
 const $=id=>document.getElementById(id), fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
 let sourceFile=null, ready=false, busy=false, selectionSerial=0, downloadURL=null, outputBlob=null;
 function status(message,level=''){ $('status').textContent=message;$('status').style.color=level==='error'?'#ffb6a5':level==='ok'?'#8de5ca':'#c2c8da'; }
