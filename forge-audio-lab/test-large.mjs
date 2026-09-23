@@ -22,6 +22,25 @@ try {
   }
   execFileSync('ffmpeg',['-v','error','-xerror','-i',smallOut,'-map','0:v:0','-f','null','-'],{timeout:40000});
  });
+ await test('44.1 kHz AAC timebase is accepted without resampling or re-encoding',async()=>{
+  const input=join(temp,'aac-44100.mp4'),out=join(temp,'aac-44100-output.mp4');
+  execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','testsrc2=size=240x426:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-t','1.25','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-ar','44100','-movflags','+faststart',input],{timeout:40000});
+  const file=await openAsBlob(input),before=await inspectForgeReadyFile(file),{output,report}=await addForgeLikeTrackFile(file);
+  assert.equal(before.audioTimescale,44100);
+  assert.equal(report.originalAudioTimescale,44100);
+  assert.equal(report.secondAudioSamples,before.samples+TAIL_COUNT);
+  await writeFile(out,Buffer.from(await output.arrayBuffer()));
+  const p=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=index,codec_name,sample_rate,time_base,nb_frames','-of','json',out]).toString());
+  assert.equal(p.streams.length,3);
+  assert.equal(p.streams[1].sample_rate,'44100');
+  assert.equal(p.streams[2].sample_rate,'44100');
+  assert.equal(+p.streams[2].nb_frames,before.samples+TAIL_COUNT);
+  for(const map of ['0:v:0','0:a:0']){
+   const hash=path=>execFileSync('ffmpeg',['-v','error','-i',path,'-map',map,'-c','copy','-f','md5','-']).toString().trim();
+   assert.equal(hash(input),hash(out),map+' payload changed');
+  }
+  execFileSync('ffmpeg',['-v','error','-xerror','-i',out,'-map','0:v:0','-map','0:a:0','-f','null','-'],{timeout:40000});
+ });
  await test('moov-last MP4 works without fast-start and retains original packets',async()=>{
   const slow=join(temp,'moov-last.mp4'),out=join(temp,'moov-last-output.mp4');
   execFileSync('ffmpeg',['-v','error','-y','-i',original,'-map','0:v:0','-map','0:a:0','-c','copy',slow],{timeout:40000});
