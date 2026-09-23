@@ -1,6 +1,9 @@
 // Optional browser-only MP4 normalization. Original video/audio packets are never transcoded.
 const MAX_NORMALIZE_MOBILE = 220 * 1024 * 1024;
 const MAX_NORMALIZE_DESKTOP = 600 * 1024 * 1024;
+// The HEVC branch must decode+re-encode every frame; use a stricter mobile limit.
+const MAX_HEVC_MOBILE = 160 * 1024 * 1024;
+const MAX_HEVC_DESKTOP = 360 * 1024 * 1024;
 const MEDIABUNNY_URL = 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
 const SILENCE_FRAME = new Uint8Array([0x21,0x10,0x04,0x60,0x8c,0x1c]);
 const SILENCE_CONFIG = {codec:'mp4a.40.2',numberOfChannels:2,sampleRate:48000,description:new Uint8Array([0x11,0x90])};
@@ -20,7 +23,23 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
   const video = await input.getPrimaryVideoTrack();
   const audio = await input.getPrimaryAudioTrack();
   if (!video) throw new Error('ما لقينا مسار فيديو داخل الملف المجزّأ.');
-  if ((await video.getCodec()) !== 'avc') throw new Error('فيديو المصدر مو H.264؛ هذا المسار ما يحوّل HEVC أو HDR تلقائياً.');
+  const sourceCodec = await video.getCodec();
+  if (!['avc','hevc'].includes(sourceCodec)) throw new Error('نوع الصورة غير مدعوم: '+(sourceCodec||'unknown')+'. الأداة تحتاج H.264 أو HEVC.');
+  const transcodeHevc = sourceCodec === 'hevc';
+  let transcodeQuality = null;
+  if (transcodeHevc) {
+    const maxHevc = mobile ? MAX_HEVC_MOBILE : MAX_HEVC_DESKTOP;
+    if (file.size > maxHevc) throw new Error('ملف HEVC حجمه '+Math.round(file.size/1048576)+'MB؛ التحويل المحلي على جهازك محدود إلى '+Math.round(maxHevc/1048576)+'MB. تحتاج تحويل H.264 خارجي قبل Forge Track.');
+    const color = await video.getColorSpace();
+    const transfer = String(color?.transfer||'').toLowerCase();
+    if (['pq','hlg','smpte2084','arib-std-b67'].includes(transfer)) throw new Error('الملف HEVC HDR ('+transfer+'). تحويل الألوان إلى SDR يحتاج Tone Mapping متخصص؛ ما راح نغيّر الألوان بصمت. حوّله إلى H.264 SDR أولاً.');
+    const width = await video.getCodedWidth(), height = await video.getCodedHeight();
+    if (!Number.isInteger(width)||!Number.isInteger(height)||width<=0||height<=0||width*height>3840*2160) throw new Error('دقة فيديو HEVC تتجاوز قدرة المعالجة المحلية الحالية.');
+    if (!(await video.canDecode())) throw new Error('متصفح هذا الجهاز ما يدعم فك HEVC لهالفيديو. جرّب جهازاً يدعم HEVC أو جهّز H.264 خارج الموقع.');
+    const bitrate = Math.min(22000000,Math.max(6000000,Math.round(width*height/(3840*2160)*22000000)));
+    transcodeQuality = new M.Quality({bitrate,bitrateMode:'constant'});
+    if (!(await M.canEncodeVideo('avc',{width,height,quality:transcodeQuality,hardwareAcceleration:'prefer-hardware'}))) throw new Error('متصفح هذا الجهاز ما يدعم ترميز H.264 بدقة الفيديو. يحتاج تحويل خارج الموقع.');
+  }
   // Missing audio is normal in stock footage; create a valid AAC silence track.
   if (audio && (await audio.getCodec()) !== 'aac') throw new Error('صوت الفيديو مو AAC. هذا المحرك يحافظ على الصوت الأصلي ولا يعيد ترميزه.');
   const target = new M.BufferTarget();
@@ -28,7 +47,8 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
     format: new M.Mp4OutputFormat({ fastStart: 'in-memory' }), target,
   });
   const conversion = await M.Conversion.init({
-    input, output, tracks: 'primary', copy: { mode: 'forced' },
+    input, output, tracks: 'primary', copy: { mode: transcodeHevc ? 'preferred' : 'forced' },
+    video: transcodeHevc ? {codec:'avc',quality:transcodeQuality,keyFrameInterval:1,hardwareAcceleration:'prefer-hardware',forceTranscode:true}:undefined,
     composable: !audio, showWarnings: false,
   });
   if (!conversion.isValid ||
@@ -41,6 +61,18 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
     throw new Error('أحد المسارات الأصلية غير قابل للنسخ؛ لن نعيد ترميزه تلقائياً.');
   }
   conversion.onProgress = fraction => onProgress(Math.max(0, Math.min(1, fraction)));
+  // Copy-preferred allows the forced HEVC video transcode; verify AAC packet integrity below.
+  const hashPackets = async(track)=>{
+    if (!track) return null;
+    let hash=2166136261,total=0,count=0;
+    const packets = new M.EncodedPacketSink(track);
+    for await (const p of packets.packets()){
+      for(const b of p.data) hash=Math.imul(hash^b,16777619)>>>0;
+      total+=p.data.byteLength;count++;
+    }
+    return [hash,total,count].join(':');
+  };
+  const sourceAudioHash = transcodeHevc && audio ? await hashPackets(audio) : null;
   if (audio) {
     await conversion.execute();
   } else {
@@ -64,6 +96,15 @@ export async function normalizeFragmentedFile(file, onProgress = () => {}, libra
   if (!target.buffer || !target.buffer.byteLength) throw new Error('لم ينتج ملف MP4 بعد التحويل.');
   const name = (file.name || 'video').replace(/\.mp4$/i,'') + '-hamodybr-normalized.mp4';
   const normalized = new File([target.buffer], name, { type: 'video/mp4' });
+  if (transcodeHevc) {
+    const check = new M.Input({formats:M.ALL_FORMATS, source:new M.BlobSource(normalized)});
+    const outVideo = await check.getPrimaryVideoTrack();
+    if (!outVideo || (await outVideo.getCodec())!=='avc')throw new Error('فشل التحقق: التحويل ما أنتج صورة H.264.');
+    if (audio) {
+      const outAudio=await check.getPrimaryAudioTrack();
+      if (!outAudio || (await hashPackets(outAudio))!==sourceAudioHash)throw new Error('فشل التحقق من حفظ الصوت الأصلي بدون إعادة ترميز.');
+    }
+  }
   onProgress(1);
-  return {file: normalized, method:'encoded-packet-copy', addedSilentAudio:!audio, inputBytes:file.size, outputBytes:normalized.size};
+  return {file: normalized, method: transcodeHevc?'hevc-to-avc':'encoded-packet-copy', videoTranscoded:transcodeHevc, addedSilentAudio:!audio, inputBytes:file.size, outputBytes:normalized.size};
 }
