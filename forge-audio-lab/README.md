@@ -5,7 +5,7 @@ This is a standalone, opt-in research tool hosted separately at `/forge-audio-la
 ## Supported inputs
 
 - Non-fragmented MP4 with exactly one `moov` and one `mdat`, in either order (fast-start or moov-last). Well-formed trailing boxes after `mdat` are supported; fragmented `moof`/`sidx` and arbitrary unstructured trailing bytes remain unsupported.
-- Exactly one AVC/H.264 video track and one `mp4a` AAC audio track, with a 48 kHz audio media timescale.
+- Exactly one AVC/H.264 video track and one `mp4a` AAC audio track. AAC media timescales other than 48 kHz (including 44.1 kHz) are supported without resampling.
 - Supports large files up to approximately **3.87 GiB**, subject to MP4's 32-bit chunk offsets and the size of its metadata. The browser scans small top-level atom headers and reads only `moov` (up to 64 MiB), not the full video payload; it also supports `moov` located after `mdat`. Output is a `Blob` of file-backed slices, the patched `moov`, and a 55,296-byte tail; no full-file `ArrayBuffer` copy.
 - A phone/browser can still impose smaller saving, sharing, free-storage or file-provider limits, so the theoretical size is **not** a guarantee on every iPhone.
 - Use a compatible SDR/H.264 input such as the earlier HAMODYBR Forge Clean file. An original HEVC/HDR MOV must be separately converted first. Color and frame rate are **not** modified by this tool.
@@ -35,3 +35,9 @@ Keep the previously successful Forge original as control; test this generated va
 - Fast-start MP4 (`moov` before `mdat`), default FFmpeg MP4 (`mdat` before `moov`) and MP4 with an extra top-level `free` atom after `mdat` are covered by automated tests.
 - The patched chunk offsets apply the size delta only when source payload lies **after** the original `moov` location. Preceding media bytes remain in place. Output retains each original top-level atom (other than rebuilt `moov`) and appends the Forge-like tail outside `mdat`.
 - This removes the rigid `Requires a fast-start, non-fragmented MP4 with mdat last` limitation but does **not** add support for HEVC/HDR, multi-track/multi-`mdat` videos, or every MP4 variant.
+
+## AAC timebase update
+
+- Previously the lab rejected every audio media-header timescale except 48000. It now validates the declared timescale is positive and retains the existing audio packets and original media headers as-is.
+- The synthetic 6,912 audio samples still have one media-timebase tick each (as observed in the Forge 48-kHz reference). Their nominal extra span is therefore timescale-dependent, and an output from another source is **not** identical to the 48-kHz reference.
+- `44.1 kHz` regression checks the main AAC sample rate, both tracks' encoded packet hashes, the extra sample count, and full decode of video plus the valid primary AAC.
