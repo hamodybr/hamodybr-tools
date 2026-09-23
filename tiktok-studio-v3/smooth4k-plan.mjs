@@ -44,3 +44,24 @@ export function validateSmoothOutput(source,output,plan) {
   if(failures.length) throw new Error('Output safety check failed: '+failures.join(', ')+'. Original file remains untouched.');
   return true;
 }
+
+/** Mediabunny requires fit whenever both explicit output dimensions are supplied.
+ * Contain leaves native 4K pixels uncropped; both dimensions match the source.
+ */
+export function makeVideoConversionOptions(plan, quality) {
+  if (!plan || !Number.isInteger(plan.width) || !Number.isInteger(plan.height) ||
+      !['hevc','avc'].includes(plan.codec) || !Number.isFinite(plan.targetFps) ||
+      !Number.isFinite(plan.keyFrameInterval) || !quality)
+    throw new Error('Invalid Smooth 4K conversion configuration.');
+  return {
+    width: plan.width,
+    height: plan.height,
+    fit: 'contain',
+    frameRate: plan.targetFps,
+    codec: plan.codec,
+    quality,
+    keyFrameInterval: plan.keyFrameInterval,
+    hardwareAcceleration: 'prefer-hardware',
+    forceTranscode: true
+  };
+}
