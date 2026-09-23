@@ -4,9 +4,9 @@ This is a standalone, opt-in research tool hosted separately at `/forge-audio-la
 
 ## Supported inputs
 
-- Fast-start, non-fragmented MP4 ending with `mdat`.
+- Non-fragmented MP4 with exactly one `moov` and one `mdat`, in either order (fast-start or moov-last). Well-formed trailing boxes after `mdat` are supported; fragmented `moof`/`sidx` and arbitrary unstructured trailing bytes remain unsupported.
 - Exactly one AVC/H.264 video track and one `mp4a` AAC audio track, with a 48 kHz audio media timescale.
-- Supports large files up to approximately **3.87 GiB**, subject to MP4's 32-bit chunk offsets and the size of its metadata. The browser reads only the header/`moov` before `mdat` (up to 64 MiB), not the full video payload. Output is a `Blob` of file-backed slices, the patched `moov`, and a 55,296-byte tail; no full-file `ArrayBuffer` copy.
+- Supports large files up to approximately **3.87 GiB**, subject to MP4's 32-bit chunk offsets and the size of its metadata. The browser scans small top-level atom headers and reads only `moov` (up to 64 MiB), not the full video payload; it also supports `moov` located after `mdat`. Output is a `Blob` of file-backed slices, the patched `moov`, and a 55,296-byte tail; no full-file `ArrayBuffer` copy.
 - A phone/browser can still impose smaller saving, sharing, free-storage or file-provider limits, so the theoretical size is **not** a guarantee on every iPhone.
 - Use a compatible SDR/H.264 input such as the earlier HAMODYBR Forge Clean file. An original HEVC/HDR MOV must be separately converted first. Color and frame rate are **not** modified by this tool.
 
@@ -29,3 +29,9 @@ Keep the previously successful Forge original as control; test this generated va
 
 - Local 45.6-MB Forge Clean reference generated an output SHA256 identical to the previous version: `e5495c5d0f2057eb79e6039579595136e278a18e2a2b6ed76f17268d6686a8df`.
 - A synthetic 320-MiB file (same valid A/V samples and extended `mdat`) produced 335,638,010 bytes, 491 video frames, 768 primary AAC packets and 7,680 experimental AAC packets; strict primary video decode succeeded. Browser-side iOS storage/save and actual 320-MiB real-footage TikTok behavior remain unverified.
+
+## Atom layout regression
+
+- Fast-start MP4 (`moov` before `mdat`), default FFmpeg MP4 (`mdat` before `moov`) and MP4 with an extra top-level `free` atom after `mdat` are covered by automated tests.
+- The patched chunk offsets apply the size delta only when source payload lies **after** the original `moov` location. Preceding media bytes remain in place. Output retains each original top-level atom (other than rebuilt `moov`) and appends the Forge-like tail outside `mdat`.
+- This removes the rigid `Requires a fast-start, non-fragmented MP4 with mdat last` limitation but does **not** add support for HEVC/HDR, multi-track/multi-`mdat` videos, or every MP4 variant.

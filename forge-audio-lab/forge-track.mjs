@@ -40,7 +40,7 @@ function codecFromTrack(a,track){const stsd=child(a,stblFromTrack(a,track),'stsd
 function versionedDuration(a,mdhd){const ver=a[mdhd.start+8],scaleOffset=mdhd.start+(ver===1?28:20), durOffset=scaleOffset+4; if(ver!==0 && ver!==1) fail('Unsupported media header version');const scale=u32(a,scaleOffset);const d=ver===1?Number(view(a).getBigUint64(durOffset,false)):u32(a,durOffset);return {scale,duration:d,seconds:d/scale};}
 function replaceTree(a,box,replacements){if(replacements.has(box.start))return replacements.get(box.start);if(!['trak','mdia','minf','stbl'].includes(box.type))return a.subarray(box.start,box.end);return makeBox(box.type,pack(children(a,box).filter(b=>box.type!=='trak'||b.type!=='edts').map(b=>replaceTree(a,b,replacements))));}
 function gatherChunkBoxes(a,root){const out=[];function walk(b){if(b.type==='stco'||b.type==='co64')out.push(b);for(const c of ['moov','trak','mdia','minf','stbl'].includes(b.type)?children(a,b):[])walk(c);}walk(root);return out;}
-function verifyInput({a,top,moov,mdat,fullSize}){
+function verifyInput({a,top,moov,moovFile,mdat,fullSize}){
  if(!isData(a)||a.length<128)fail('Invalid MP4 metadata');
  const tracks=children(a,moov).filter(b=>b.type==='trak');
  const audios=tracks.filter(b=>aTrackKind(a,b)==='soun');
@@ -62,10 +62,10 @@ function verifyInput({a,top,moov,mdat,fullSize}){
  if(stsz.end-(stsz.start+20)!==samples*4)fail('AAC sample-size table is inconsistent');
  if(stco.end-(stco.start+16)!==chunkCount*(stco.type==='stco'?4:8))fail('Chunk-offset table is inconsistent');
  if(stsc.end-(stsc.start+16)!==scEntries*12 || stts.end-(stts.start+16)!==ttsEntries*8)fail('AAC tables are inconsistent');
- return {a,top,moov,mdat,fullSize,tracks,audio,stbl,stts,stsc,stsz,stco,mdhd,time,samples,chunkCount,scEntries,descIndex};
+ return {a,top,moov,moovFile,mdat,fullSize,tracks,audio,stbl,stts,stsc,stsz,stco,mdhd,time,samples,chunkCount,scEntries,descIndex};
 }
 function buildPlan(x){
- const {a,moov,mdat,audio,stts,stsc,stsz,stco,samples,chunkCount,scEntries,descIndex,fullSize}=x;
+ const {a,moov,moovFile,mdat,audio,stts,stsc,stsz,stco,samples,chunkCount,scEntries,descIndex,fullSize}=x;
  const tail=new Uint8Array(TAIL_COUNT*8);for(let i=0;i<TAIL_COUNT;i++)tail.set(TAIL_PAYLOAD,i*8);
  const replacements=new Map();
  const ttsBytes=new Uint8Array(8);w32(ttsBytes,0,TAIL_COUNT);w32(ttsBytes,4,1);
@@ -102,7 +102,7 @@ function buildPlan(x){
      const pos=b.start+16+i*step;
      const original=b.type==='stco'?u32(newMoov,pos):Number(view(newMoov).getBigUint64(pos,false));
      const isTail=(b.type==='stco'?original===0xffffffff:view(newMoov).getBigUint64(pos,false)===0xffffffffffffffffn);
-     const updated=isTail?fullSize+delta:original>=mdat.start?original+delta:original;
+     const updated=isTail?fullSize+delta:original>=moovFile.end?original+delta:original;
      if(updated>0xffffffff && b.type==='stco')fail('Chunk offset overflow');
      if(b.type==='stco')w32(newMoov,pos,updated);else view(newMoov).setBigUint64(pos,BigInt(updated),false);
      patchCount++;if(isTail)tailCount++;
@@ -115,25 +115,28 @@ async function readTop(file){
  if(!file||typeof file.size!=='number'||typeof file.slice!=='function')fail('Choose an MP4 video file');
  if(file.size<128)fail('Video file is too small');
  if(file.size>MAX_OUTPUT_BYTES-2*MAX_HEADER_BYTES)fail('Video is too large for this 32-bit MP4 lab (approximately 3.87 GiB).');
+ // Walk the entire top-level file, skipping mdat payloads with File.slice instead of loading them.
+ // Both fast-start (moov before mdat) and moov-last (mdat before moov) are supported.
  const top=[];let pos=0;
- while(pos+8<=file.size){
+ while(pos<file.size){
+  if(file.size-pos<8)fail('Incomplete trailing MP4 box');
   const b=new Uint8Array(await file.slice(pos,Math.min(pos+16,file.size)).arrayBuffer());
   const size32=u32(b,0),type=str(b,4);let size=size32,hdr=8;
   if(size32===1){if(b.length<16)fail('Truncated extended MP4 atom');size=Number(view(b).getBigUint64(8,false));hdr=16;}
-  else if(size32===0)size=file.size-pos;
+  else if(size32===0)fail('Unbounded '+type+' box is unsupported by this experiment');
   if(!Number.isSafeInteger(size)||size<hdr||pos+size>file.size)fail('Invalid MP4 atom '+type);
   const item={start:pos,end:pos+size,size,hdr,type};top.push(item);pos+=size;
-  if(type==='mdat')break;
-  if(pos>MAX_HEADER_BYTES)fail('MP4 headers exceed 64 MB. Please use a compact fast-start MP4.');
+  if(top.length>128)fail('Too many top-level MP4 atoms');
  }
- const moov=top.find(b=>b.type==='moov'),mdat=top.find(b=>b.type==='mdat');
- if(!moov||!mdat||moov.start>mdat.start||mdat.end!==file.size)fail('Requires a fast-start, non-fragmented MP4 with mdat last');
- if(top.some(b=>['moof','sidx'].includes(b.type)))fail('Fragmented MP4 not supported');
- const mdHead=new Uint8Array(await file.slice(mdat.start,mdat.start+4).arrayBuffer());
- if(u32(mdHead,0)===0)fail('Unbounded mdat box is unsupported');
- if(mdat.start>MAX_HEADER_BYTES)fail('MP4 header too large for on-device processing');
- const a=new Uint8Array(await file.slice(0,mdat.start).arrayBuffer());
- return {a,top,moov,mdat,fullSize:file.size};
+ if(top.some(b=>['moof','sidx','mfra'].includes(b.type)))fail('Fragmented MP4 not supported');
+ const moovs=top.filter(b=>b.type==='moov'),mdats=top.filter(b=>b.type==='mdat');
+ if(moovs.length!==1||mdats.length!==1)fail('Requires an MP4 containing exactly one moov and one mdat atom');
+ const moovFile=moovs[0], mdat=mdats[0];
+ if(moovFile.size>MAX_HEADER_BYTES)fail('MP4 metadata exceeds 64 MB');
+ const a=new Uint8Array(await file.slice(moovFile.start,moovFile.end).arrayBuffer());
+ const moov=boxList(a)[0];
+ if(moov.type!=='moov'||moov.size!==moovFile.size)fail('MP4 metadata could not be parsed');
+ return {a,top,moov,moovFile,mdat,fullSize:file.size};
 }
 export async function inspectForgeReadyFile(file){
  const x=verifyInput(await readTop(file));
@@ -141,7 +144,7 @@ export async function inspectForgeReadyFile(file){
 }
 export async function addForgeLikeTrackFile(file){
  const x=verifyInput(await readTop(file)),plan=buildPlan(x);
- const output=new Blob([file.slice(0,x.moov.start),plan.newMoov,file.slice(x.moov.end),plan.tail],{type:'video/mp4'});
+ const output=new Blob([file.slice(0,x.moovFile.start),plan.newMoov,file.slice(x.moovFile.end),plan.tail],{type:'video/mp4'});
  if(output.size!==plan.report.outputBytes)fail('Unexpected output size');
  return {output,report:plan.report};
 }
