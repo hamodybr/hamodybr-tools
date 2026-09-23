@@ -22,6 +22,34 @@ try {
   }
   execFileSync('ffmpeg',['-v','error','-xerror','-i',smallOut,'-map','0:v:0','-f','null','-'],{timeout:40000});
  });
+ await test('moov-last MP4 works without fast-start and retains original packets',async()=>{
+  const slow=join(temp,'moov-last.mp4'),out=join(temp,'moov-last-output.mp4');
+  execFileSync('ffmpeg',['-v','error','-y','-i',original,'-map','0:v:0','-map','0:a:0','-c','copy',slow],{timeout:40000});
+  const file=await openAsBlob(slow),info=await inspectForgeReadyFile(file),{output,report}=await addForgeLikeTrackFile(file);
+  assert.equal(output.size,report.outputBytes);
+  assert.equal(report.secondAudioSamples,info.samples+TAIL_COUNT);
+  await writeFile(out,Buffer.from(await output.arrayBuffer()));
+  const p=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=index,codec_name,nb_frames','-of','json',out]).toString());
+  assert.equal(p.streams.length,3);
+  assert.equal(+p.streams[2].nb_frames,info.samples+TAIL_COUNT);
+  for(const map of ['0:v:0','0:a:0']){
+   const hash=path=>execFileSync('ffmpeg',['-v','error','-i',path,'-map',map,'-c','copy','-f','md5','-']).toString().trim();
+   assert.equal(hash(slow),hash(out),map+' payload changed');
+  }
+  execFileSync('ffmpeg',['-v','error','-xerror','-i',out,'-map','0:v:0','-f','null','-'],{timeout:40000});
+ });
+ await test('extra top-level atom after mdat is preserved',async()=>{
+  const source=join(temp,'trailing-free.mp4'),out=join(temp,'trailing-free-output.mp4');
+  const free=Buffer.alloc(16);free.writeUInt32BE(16,0);free.write('free',4,'ascii');
+  await copyFile(original,source);
+  const {appendFile}=await import('node:fs/promises');await appendFile(source,free);
+  const file=await openAsBlob(source),info=await inspectForgeReadyFile(file),{output,report}=await addForgeLikeTrackFile(file);
+  assert.equal(report.secondAudioSamples,info.samples+TAIL_COUNT);
+  const buf=Buffer.from(await output.arrayBuffer());await writeFile(out,buf);
+  assert.ok(buf.includes(free),'trailing free atom missing');
+  const hash=path=>execFileSync('ffmpeg',['-v','error','-i',path,'-map','0:v:0','-c','copy','-f','md5','-']).toString().trim();
+  assert.equal(hash(source),hash(out),'video packets changed after trailing free atom');
+ });
  await test('large 320-MiB MP4 works without reading whole input',async()=>{
   const large=join(temp,'large.mp4');await copyFile(original,large);const fd=openSync(large,'r+');
   try{let pos=0,mdat=-1;while(pos<16*1024*1024){const h=Buffer.alloc(16);readSync(fd,h,0,16,pos);
