@@ -3,7 +3,7 @@ import {
   BufferTarget, Quality, canEncodeVideo, EncodedPacketSink
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
 import { addForgeLikeTrackFile, inspectForgeReadyFile } from '../forge-audio-lab/forge-track.mjs?v=6';
-import { makeSmoothPlan, validateSmoothOutput } from './smooth4k-plan.mjs?v=2';
+import { makeSmoothPlan, validateSmoothOutput, makeVideoConversionOptions } from './smooth4k-plan.mjs?v=3';
 
 const $ = id => document.getElementById(id);
 const mib = n => (n / 1048576).toFixed(2) + ' MB';
@@ -180,11 +180,7 @@ $('run').addEventListener('click', async () => {
     const out = new Output({format:new Mp4OutputFormat({fastStart:'in-memory'}),target});
     conversion = await Conversion.init({
       input,output:out,tracks:'primary',copy:{mode:'preferred'},showWarnings:false,
-      video:{
-        width:activePlan.width,height:activePlan.height,frameRate:activePlan.targetFps,
-        codec:activePlan.codec,quality:q,keyFrameInterval:activePlan.keyFrameInterval,
-        hardwareAcceleration:'prefer-hardware',forceTranscode:true
-      }
+      video:makeVideoConversionOptions(activePlan,q)
     });
     if (!conversion.isValid || !conversion.utilizedTracks.includes(video) || !conversion.utilizedTracks.includes(audio))
       throw new Error('محرّك المعالجة رفض إعداد '+activePlan.codec.toUpperCase()+' / AAC. لا توجد نتيجة.');
