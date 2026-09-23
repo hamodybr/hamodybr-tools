@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#6558f5"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>HAMODYBR Valid-Sample Lab — Experimental</title>
+<link rel="stylesheet" href="./v33.css?v=343"/>
+<style>
+.lab-wrap{max-width:900px;margin:0 auto;padding:18px 14px 60px}
+.lab-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.lab-choices label{display:block;padding:14px;border:1px solid #555;border-radius:12px;cursor:pointer}
+.lab-choices label:has(input:checked){border:2px solid #f2c444}
+.lab-choices input{accent-color:#f2c444}
+.lab-choices strong,.lab-choices small{display:block;margin-top:5px}
+.lab-details{white-space:pre-wrap;overflow-wrap:anywhere}
+.lab-metrics{font-variant-numeric:tabular-nums}
+.lab-choices small{font-size:12px;line-height:1.45;color:#aaa}
+.lab-choices label:has(input:disabled){opacity:.55}
+#labProgress{width:100%;margin-top:10px}
+#labStatus{white-space:pre-wrap}
+@media(max-width:650px){.lab-choices{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="shell top"><div class="brand">HAMODYBR<small>STUDIO LAB</small></div><span class="lab">EXPERIMENTAL</span></header>
+<main class="lab-wrap">
+<section class="hero">
+<h1>Valid-Sample <span>Lab</span></h1>
+<p>Three controlled MP4 construction tests, not a TikTok bypass. All file processing is local in your browser.</p>
+<p><a href="./v34.html">← Back to TikTok Studio V3.4</a></p>
+</section>
+<section class="card">
+<div class="note warn"><b>What this can and cannot do:</b> All generated video samples must be valid. A/C copy unchanged encoded packets; B re-encodes real 60 FPS samples and may repeat frames. No mode adds ghost/fake samples, forces Public, bypasses review, or guarantees any playback quality on TikTok. Keep the original file.</div>
+<label class="picker"><strong>Choose original video</strong><span>MP4 / MOV • stays on this device</span><input id="labFile" type="file" accept="video/*,.mp4,.mov,.m4v"/></label>
+<div class="note" id="labSource">Choose a video to read its metadata.</div>
+<div class="lab-choices" role="radiogroup" aria-label="Valid Sample experiment">
+<label><input type="radio" name="labMode" value="A" checked/><strong>A — Standard Remux</strong><small>Copy encoded packets; normal speed and FPS. Fast Start MP4.</small></label>
+<label><input type="radio" name="labMode" value="B"/><strong>B — Genuine 60 FPS</strong><small>Re-encode to actual video samples at 60 FPS. SDR only; visual loss possible.</small></label>
+<label><input type="radio" name="labMode" value="C"/><strong>C — Alternate Container</strong><small>Copy encoded packets; place moov metadata at end. Different MP4 packaging.</small></label>
+</div>
+<div class="note warn" id="labNotice" role="status">A is the unchanged-payload control, not a quality enhancement.</div>
+<div class="actions"><button class="btn" id="labRun" disabled>Build experiment A</button><button class="btn secondary" id="labReset">Reset</button></div>
+<progress id="labProgress" value="0" max="100"></progress>
+<div class="status" id="labStatus" role="status" aria-live="polite">Waiting for a video.</div>
+<div class="result" id="labResult" hidden>
+<strong>Local file ready — review checks before upload</strong>
+<pre id="labDetails" class="diag lab-details"></pre>
+<div class="actions"><button class="btn" id="labShare" hidden>Share / Save video</button><button class="btn secondary" id="labDownload">Download MP4</button></div>
+</div>
+</section>
+<section class="card">
+<div class="note"><b>Important:</b> Metadata and packet checks do not prove that every frame decodes or that TikTok finishes processing a Public post. Test one completed Public post from another account/device. If TikTok leaves it Private or under review, do not treat the experiment as a success. C may be less convenient for streaming than A.</div>
+<p class="tiny">Large 4K files and 60 FPS transcoding may exhaust mobile browser memory. If B is unavailable, use A or C. Output contains no invented HDR metadata.</p>
+</section>
+</main>
+<footer class="shell foot">HAMODYBR Studio • Valid-Sample Lab • experimental</footer>
+<script type="module" src="./valid-sample-lab.js?v=1"></script>
+</body></html>
