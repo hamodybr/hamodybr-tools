@@ -34,6 +34,7 @@ jobs:
           node --check forge-audio-lab/forge-track.mjs
           node --check forge-audio-lab/normalize-fragmented.mjs
           node --check forge-audio-lab/test-hevc.mjs
+          node --check forge-audio-lab/test-hlg.mjs
           python3 - <<'PY'
           from pathlib import Path
           page = Path('forge-audio-lab/index.html').read_text()
@@ -42,4 +43,4 @@ jobs:
           PY
           node --check /tmp/forge-lab-ui.mjs
       - name: Run container and large-file tests
-        run: node --test forge-audio-lab/test-large.mjs forge-audio-lab/test-hevc.mjs
+        run: node --test forge-audio-lab/test-large.mjs forge-audio-lab/test-hevc.mjs forge-audio-lab/test-hlg.mjs
