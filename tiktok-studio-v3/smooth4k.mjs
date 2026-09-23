@@ -46,7 +46,7 @@ function refresh() {
 }
 function colorString(color) { return [color?.primaries, color?.transfer, color?.matrix].filter(Boolean).join(' / ') || 'Unknown'; }
 
-async async function fingerprint(track) {
+async function fingerprint(track) {
   const result = emptyAacFingerprint();
   if (!track) return result;
   for await (const packet of new EncodedPacketSink(track).packets())
