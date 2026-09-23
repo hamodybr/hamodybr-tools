@@ -44,6 +44,44 @@ try {
   const {readFile}=await import('node:fs/promises');
   assert.deepEqual(Buffer.from(await output.arrayBuffer()),await readFile(smallOut));
  });
+ await test('standalone sidx box is allowed in a non-fragmented MP4',async()=>{
+  const source=join(temp,'index-only.mp4'),output=join(temp,'index-only-output.mp4');
+  const sidx=Buffer.alloc(16);sidx.writeUInt32BE(16,0);sidx.write('sidx',4,'ascii');
+  await copyFile(original,source);
+  const {appendFile}=await import('node:fs/promises');await appendFile(source,sidx);
+  const f=await openAsBlob(source),metadata=await inspectForgeReadyFile(f);
+  assert.equal(metadata.alreadyProcessed,false);
+  const result=await addForgeLikeTrackFile(f);
+  assert.equal(result.report.secondAudioSamples,metadata.samples+TAIL_COUNT);
+  await writeFile(output,Buffer.from(await result.output.arrayBuffer()));
+  const hash=(path,map)=>execFileSync('ffmpeg',['-v','error','-i',path,'-map',map,'-c','copy','-f','md5','-']).toString().trim();
+  for(const map of ['0:v:0','0:a:0'])assert.equal(hash(source,map),hash(output,map),map+' payload changed');
+ });
+ await test('genuine fragmented H264/AAC MP4 normalizes with encoded packet copying',async()=>{
+  const fragmented=join(temp,'fragmented.mp4'),normalizedPath=join(temp,'normalized.mp4'),forgePath=join(temp,'fragmented-forge.mp4');
+  execFileSync('ffmpeg',['-v','error','-y','-i',original,'-map','0:v:0','-map','0:a:0','-c','copy','-movflags','+frag_keyframe+empty_moov+default_base_moof','-frag_duration','500000',fragmented],{timeout:40000});
+  const {normalizeFragmentedFile}=await import('./normalize-fragmented.mjs');
+  const M=await import('mediabunny');
+  const f=await openAsBlob(fragmented);
+  await assert.rejects(inspectForgeReadyFile(f),/FRAGMENTED_MP4/);
+  let lastProgress=0;
+  const prepared=await normalizeFragmentedFile(f,n=>{lastProgress=n;},M,{mobile:false});
+  assert.equal(prepared.method,'encoded-packet-copy');assert.equal(lastProgress,1);
+  await writeFile(normalizedPath,Buffer.from(await prepared.file.arrayBuffer()));
+  const checked=await inspectForgeReadyFile(prepared.file);
+  assert.equal(checked.alreadyProcessed,false);
+  const forged=await addForgeLikeTrackFile(prepared.file);
+  await writeFile(forgePath,Buffer.from(await forged.output.arrayBuffer()));
+  const info=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=index,codec_name,nb_frames','-of','json',forgePath]).toString());
+  assert.equal(info.streams.length,3);
+  assert.equal(+info.streams[2].nb_frames,checked.samples+TAIL_COUNT);
+  const hash=(path,map)=>execFileSync('ffmpeg',['-v','error','-i',path,'-map',map,'-c','copy','-f','md5','-']).toString().trim();
+  for(const map of ['0:v:0','0:a:0']){
+   assert.equal(hash(fragmented,map),hash(normalizedPath,map),map+' changed during remux');
+   assert.equal(hash(fragmented,map),hash(forgePath,map),map+' changed during Forge Track');
+  }
+  execFileSync('ffmpeg',['-v','error','-xerror','-i',forgePath,'-map','0:v:0','-map','0:a:0','-f','null','-'],{timeout:40000});
+ });
  await test('44.1 kHz AAC timebase is accepted without resampling or re-encoding',async()=>{
   const input=join(temp,'aac-44100.mp4'),out=join(temp,'aac-44100-output.mp4');
   execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','testsrc2=size=240x426:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-t','1.25','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-ar','44100','-movflags','+faststart',input],{timeout:40000});
