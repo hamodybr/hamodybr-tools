@@ -22,6 +22,28 @@ try {
   }
   execFileSync('ffmpeg',['-v','error','-xerror','-i',smallOut,'-map','0:v:0','-f','null','-'],{timeout:40000});
  });
+ await test('two valid AAC tracks remain intact and one experiment track is appended',async()=>{
+  const multi=join(temp,'two-audio.mp4'),out=join(temp,'two-audio-output.mp4');
+  execFileSync('ffmpeg',['-v','error','-y','-i',original,'-map','0:v:0','-map','0:a:0','-map','0:a:0','-c','copy','-movflags','+faststart',multi],{timeout:40000});
+  const f=await openAsBlob(multi),before=await inspectForgeReadyFile(f);
+  assert.equal(before.audioTrackCount,2);assert.equal(before.alreadyProcessed,false);
+  const {output,report}=await addForgeLikeTrackFile(f);
+  assert.equal(report.secondAudioSamples,before.samples+TAIL_COUNT);
+  await writeFile(out,Buffer.from(await output.arrayBuffer()));
+  const info=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=index,codec_name,nb_frames','-of','json',out]).toString());
+  assert.equal(info.streams.length,4);assert.equal(+info.streams[3].nb_frames,before.samples+TAIL_COUNT);
+  const hash=(path,map)=>execFileSync('ffmpeg',['-v','error','-i',path,'-map',map,'-c','copy','-f','md5','-']).toString().trim();
+  for(const map of ['0:v:0','0:a:0','0:a:1'])assert.equal(hash(multi,map),hash(out,map),map+' payload changed');
+  execFileSync('ffmpeg',['-v','error','-xerror','-i',out,'-map','0:v:0','-map','0:a:0','-map','0:a:1','-f','null','-'],{timeout:40000});
+ });
+ await test('recognized Forge output is idempotent and returned byte-for-byte',async()=>{
+  const f=await openAsBlob(smallOut),state=await inspectForgeReadyFile(f);
+  assert.equal(state.audioTrackCount,2);assert.equal(state.alreadyProcessed,true);
+  const {output,report}=await addForgeLikeTrackFile(f);
+  assert.equal(report.alreadyProcessed,true);assert.equal(report.addedTailPackets,0);assert.equal(output.size,f.size);
+  const {readFile}=await import('node:fs/promises');
+  assert.deepEqual(Buffer.from(await output.arrayBuffer()),await readFile(smallOut));
+ });
  await test('44.1 kHz AAC timebase is accepted without resampling or re-encoding',async()=>{
   const input=join(temp,'aac-44100.mp4'),out=join(temp,'aac-44100-output.mp4');
   execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','testsrc2=size=240x426:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-t','1.25','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-ar','44100','-movflags','+faststart',input],{timeout:40000});
