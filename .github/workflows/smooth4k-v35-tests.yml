@@ -1,0 +1,22 @@
+name: Smooth 4K V3.5 safety tests
+on:
+  pull_request:
+    paths:
+      - 'tiktok-studio-v3/smooth4k*'
+      - 'tiktok-studio-v3/v35.html'
+      - '.github/workflows/smooth4k-v35-tests.yml'
+  workflow_dispatch:
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JS syntax
+        run: |
+          node --check tiktok-studio-v3/smooth4k-plan.mjs
+          node --check tiktok-studio-v3/smooth4k.mjs
+      - name: Test HDR guards and FPS invariants
+        run: node --test tiktok-studio-v3/smooth4k-plan.test.mjs
