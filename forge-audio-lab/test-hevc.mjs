@@ -24,7 +24,7 @@ try {
     const f=await openAsBlob(original);
     assert.equal(probe(original).streams[0].codec_name,'hevc');
     await assert.rejects(inspectForgeReadyFile(f),/Requires H.264/);
-    const result=await normalizeFragmentedFile(f,()=>{},M,{mobile:false});
+    const result=await normalizeFragmentedFile(f,()=>{},M,{mobile:false,videoMode:'avc-sdr'});
     assert.equal(result.method,'hevc-to-avc');assert.equal(result.videoTranscoded,true);
     assert.equal(result.addedSilentAudio,false);
     await writeFile(preparedPath,Buffer.from(await result.file.arrayBuffer()));
