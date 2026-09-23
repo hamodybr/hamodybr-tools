@@ -21,7 +21,7 @@ code{direction:ltr;display:inline-block;unicode-bidi:isolate;overflow-wrap:anywh
 </head>
 <body><main>
 <div class="brand">HAMODY<span>BR</span> / PRIVATE VIDEO LAB</div>
-<div class="tag">EXPERIMENT • FORGE AUDIO TRACK V1.5</div>
+<div class="tag">EXPERIMENT • FORGE AUDIO TRACK V1.6</div>
 <h1>تجربة مسار الصوت الإضافي</h1>
 <p>نكرر البنية اللي رصدناها بملف Forge: نسخة ثانية من الصوت، وبعدها 6,912 حزمة AAC اصطناعية. <b>الفيديو والصوت الأساسي يظلّون بدون إعادة ترميز.</b></p>
 <div class="card warn"><strong>تنبيه مهم</strong><p style="margin-bottom:0">هاي تجربة بحثية تنتج مسار AAC ثانياً غير سليم عمداً؛ بعض التطبيقات قد تتجاهله أو ترفض الملف. نجاح التشغيل المحلي ما يعني أن TikTok راح يحتفظ بالجودة. احتفظ دائماً بنسخة الفيديو الأصلية.</p></div>
@@ -40,34 +40,34 @@ code{direction:ltr;display:inline-block;unicode-bidi:isolate;overflow-wrap:anywh
 </main>
 <script type="module">
 import {inspectForgeReadyFile,addForgeLikeTrackFile} from './forge-track.mjs?v=5';
-import {normalizeFragmentedFile} from './normalize-fragmented.mjs?v=1';
+import {normalizeFragmentedFile} from './normalize-fragmented.mjs?v=2';
 const $=id=>document.getElementById(id), fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
-let sourceFile=null, ready=false, needsNormalize=false, alreadyProcessed=false, busy=false, selectionSerial=0, downloadURL=null, outputBlob=null;
+let sourceFile=null, ready=false, needsNormalize=false, needsSilentAudio=false, alreadyProcessed=false, busy=false, selectionSerial=0, downloadURL=null, outputBlob=null;
 function status(message,level=''){ $('status').textContent=message;$('status').style.color=level==='error'?'#ffb6a5':level==='ok'?'#8de5ca':'#c2c8da'; }
 function resetOutput(){ $('result').classList.add('hidden');if(downloadURL){URL.revokeObjectURL(downloadURL);downloadURL=null;}outputBlob=null; }
 function refresh(){ $('run').disabled=!sourceFile||!ready||busy||!$('agree').checked; }
 function progress(percent){$('progress').classList.remove('hidden');$('progress').value=percent;}
 $('agree').addEventListener('change',refresh);
 $('source').addEventListener('change',async()=>{
- const f=$('source').files?.[0];const token=++selectionSerial;sourceFile=null;ready=false;needsNormalize=false;alreadyProcessed=false;resetOutput();$('details').classList.add('hidden');$('progress').classList.add('hidden');refresh();if(!f)return;
+ const f=$('source').files?.[0];const token=++selectionSerial;sourceFile=null;ready=false;needsNormalize=false;needsSilentAudio=false;alreadyProcessed=false;resetOutput();$('details').classList.add('hidden');$('progress').classList.add('hidden');refresh();if(!f)return;
  $('fileName').textContent=f.name;progress(10);status('جاري فحص جداول MP4 فقط؛ الفيديو الكبير يبقى على الجهاز…');
  try{await new Promise(resolve=>requestAnimationFrame(resolve));const metrics=await inspectForgeReadyFile(f);
    if(token!==selectionSerial)return;
    sourceFile=f;ready=true;$('sourceSize').textContent=fmt(metrics.sizeBytes);$('sourceSamples').textContent=metrics.samples.toLocaleString('en');$('sourceDuration').textContent=metrics.audioSeconds.toFixed(3)+' sec';$('audioTimescale').textContent=metrics.audioTimescale.toLocaleString('en')+' ticks/s';$('audioTracks').textContent=metrics.audioTrackCount.toLocaleString('en');alreadyProcessed=metrics.alreadyProcessed;$('run').textContent=alreadyProcessed?'حفظ الملف المُعالج مسبقاً':'2. إنشاء نسخة Forge Track التجريبية';$('details').classList.remove('hidden');progress(100);
    status(alreadyProcessed?'هذا الملف يحمل مسار Forge التجريبي مسبقاً. راح نحفظه بدون أي تعديل أو إضافة مسار ثالث.':metrics.audioTrackCount>1?'الملف يحتوي مسارات صوت إضافية؛ راح نحافظ عليها ونضيف المسار التجريبي بدون إعادة ترميز.':'الملف مناسب للتجربة. الصورة والصوت الأساسي راح يبقون بدون إعادة ضغط.','ok');
- }catch(e){if(token===selectionSerial){if(e.message==='FRAGMENTED_MP4'){
-   sourceFile=f;ready=true;needsNormalize=true;alreadyProcessed=false;
+ }catch(e){if(token===selectionSerial){if(e.message==='FRAGMENTED_MP4'||e.message==='Requires at least one AAC audio track; found 0 audio tracks'){
+   sourceFile=f;ready=true;needsNormalize=true;needsSilentAudio=e.message!=='FRAGMENTED_MP4';alreadyProcessed=false;
    $('sourceSize').textContent=fmt(f.size);$('sourceSamples').textContent='بعد التجهيز';$('sourceDuration').textContent='بعد التجهيز';$('audioTimescale').textContent='بعد التجهيز';$('audioTracks').textContent='بعد التجهيز';
-   $('details').classList.remove('hidden');$('run').textContent='2. تجهيز MP4 المجزّأ ثم إضافة Forge Track';
-   status('هذا فيديو مجزّأ فعلياً. راح نجرّب تحضير MP4 عادي بنسخ الصورة والصوت بدون إعادة ضغط، ثم نضيف مسار Forge إذا صار مناسباً. الملفات الكبيرة قد تحتاج تجهيزاً خارج المتصفح.');
+   $('details').classList.remove('hidden');$('run').textContent=needsSilentAudio?'2. إضافة صوت صامت ثم Forge Track':'2. تجهيز MP4 ثم إضافة Forge Track';
+   status(needsSilentAudio?'هذا المقطع ما بيه صوت؛ راح نضيف له مسار AAC صامت سليم مع نسخ الصورة الأصلية، ثم نطبق Forge Track.':'هذا فيديو مجزّأ فعلياً. راح نجهزه بنسخ الصورة والصوت بدون إعادة ضغط. إذا اتضح أنه صامت، نضيف له AAC صامت سليم. الملفات الكبيرة قد تحتاج تجهيزاً خارج المتصفح.');
   }else status('هذا الملف غير مناسب: '+e.message,'error');}}
  finally{if(token===selectionSerial){$('progress').classList.add('hidden');refresh();}}
 });
 $('run').addEventListener('click',async()=>{
  if(!sourceFile||!ready||busy||!$('agree').checked)return;busy=true;refresh();resetOutput();progress(15);status(needsNormalize?'المرحلة 1/2: جاري تحضير MP4 العادي بدون إعادة ترميز…':alreadyProcessed?'جاري تجهيز الملف الموجود بدون تعديل…':'جاري تحديث جداول MP4 لمسار AAC التجريبي…');
  await new Promise(resolve=>requestAnimationFrame(resolve));
- try{let workingFile=sourceFile;
- if(needsNormalize){const prepared=await normalizeFragmentedFile(sourceFile,p=>{progress(15+p*47);status('المرحلة 1/2: تجهيز الملف… '+Math.round(p*100)+'%');});workingFile=prepared.file;
+ try{let workingFile=sourceFile;let addedSilentAudio=false;
+ if(needsNormalize){const prepared=await normalizeFragmentedFile(sourceFile,p=>{progress(15+p*47);status('المرحلة 1/2: تجهيز الملف… '+Math.round(p*100)+'%');});workingFile=prepared.file;addedSilentAudio=prepared.addedSilentAudio;
    const check=await inspectForgeReadyFile(workingFile);
    if(check.alreadyProcessed)throw new Error('الملف الناتج يحتوي مسار Forge من قبل؛ تم إيقاف التكرار.');
    status('المرحلة 2/2: إضافة مسار Forge على الملف الجاهز…');progress(65);
@@ -75,7 +75,7 @@ $('run').addEventListener('click',async()=>{
  const {output,report}=await addForgeLikeTrackFile(workingFile);progress(70);outputBlob=output;
  const filename=report.alreadyProcessed?sourceFile.name:(sourceFile.name.replace(/\.mp4$/i,'')||'video')+'-hamodybr-forge-track-test.mp4';
  downloadURL=URL.createObjectURL(outputBlob);$('download').href=downloadURL;$('download').download=filename;
- $('report').textContent=report.alreadyProcessed?`${fmt(report.outputBytes)} • الملف يحمل مسار Forge Track مسبقاً. لم تُغيّر أي بيانات ولم يُضَف مسار صوت آخر.`:`${fmt(report.outputBytes)} • صورة المصدر والصوت الأساسي بلا إعادة ترميز • المسار الإضافي ${report.secondAudioSamples.toLocaleString('en')} حزمة، منها ${report.addedTailPackets.toLocaleString('en')} حزمة اصطناعية.`;
+ $('report').textContent=report.alreadyProcessed?`${fmt(report.outputBytes)} • الملف يحمل مسار Forge Track مسبقاً. لم تُغيّر أي بيانات ولم يُضَف مسار صوت آخر.`:`${fmt(report.outputBytes)} • ${addedSilentAudio?'أضفنا AAC صامتاً للمقطع الخالي من الصوت، وحافظنا على الصورة بدون إعادة ترميز.':'صورة المصدر والصوت الأساسي بلا إعادة ترميز.'} • مسار Forge الإضافي ${report.secondAudioSamples.toLocaleString('en')} حزمة، منها ${report.addedTailPackets.toLocaleString('en')} حزمة اصطناعية.`;
  $('result').classList.remove('hidden');$('share').classList.toggle('hidden',!navigator.canShare);progress(100);status(report.alreadyProcessed?'الملف مُعالج مسبقاً؛ جاهز للحفظ بدون تعديل.':needsNormalize?'نجح تحضير الفيديو المجزّأ وإضافة Forge Track. جرّب الملف الناتج على TikTok.':'نجح إنشاء الحاوية التجريبية محلياً. استخدم التحميل أو المشاركة لحفظ الفيديو.','ok');
  }catch(e){status('فشل إنشاء الفيديو: '+e.message,'error');}finally{busy=false;$('progress').classList.add('hidden');refresh();}
 });
