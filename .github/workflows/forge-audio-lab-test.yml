@@ -27,9 +27,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           ffmpeg -version | head -n 1
+      - name: Install Mediabunny test dependency
+        run: npm install --no-save mediabunny@1.56.3
       - name: Validate JavaScript
         run: |
           node --check forge-audio-lab/forge-track.mjs
+          node --check forge-audio-lab/normalize-fragmented.mjs
           python3 - <<'PY'
           from pathlib import Path
           page = Path('forge-audio-lab/index.html').read_text()

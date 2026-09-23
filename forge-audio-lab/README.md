@@ -4,7 +4,7 @@ This is a standalone, opt-in research tool hosted separately at `/forge-audio-la
 
 ## Supported inputs
 
-- Non-fragmented MP4 with exactly one `moov` and one `mdat`, in either order (fast-start or moov-last). Well-formed trailing boxes after `mdat` are supported; fragmented `moof`/`sidx` and arbitrary unstructured trailing bytes remain unsupported.
+- Non-fragmented MP4 with exactly one `moov` and one `mdat`, in either order (fast-start or moov-last). Well-formed trailing boxes after `mdat` are supported; a standalone `sidx` is allowed and **does not** imply fragments. Actual `moof`/`mfra` fragmented sources take an optional lossless remux preparation step before this lab's existing MP4-patcher runs. Unstructured trailing bytes remain unsupported.
 - Exactly one AVC/H.264 video track and at least one `mp4a` AAC audio track. Other original audio and metadata tracks are preserved; the first AAC track is used as the source for the synthetic track. AAC media timescales other than 48 kHz (including 44.1 kHz) are supported without resampling.
 - Supports large files up to approximately **3.87 GiB**, subject to MP4's 32-bit chunk offsets and the size of its metadata. The browser scans small top-level atom headers and reads only `moov` (up to 64 MiB), not the full video payload; it also supports `moov` located after `mdat`. Output is a `Blob` of file-backed slices, the patched `moov`, and a 55,296-byte tail; no full-file `ArrayBuffer` copy.
 - A phone/browser can still impose smaller saving, sharing, free-storage or file-provider limits, so the theoretical size is **not** a guarantee on every iPhone.
@@ -47,3 +47,11 @@ Keep the previously successful Forge original as control; test this generated va
 - Previous builds rejected inputs with more than one original audio track; compatible multi-AAC sources now retain all original tracks and add one experimental track. More than two total audio tracks may not be supported by every playback/upload platform, so test the result before relying on it.
 - Recognize our existing Forge-like output **only** when a second AAC track contains an extended 6,912 × 8-byte sample table pointing to the exact known 55,296-byte payload after `mdat`. In that case, return the original source file untouched, rather than adding a third intentionally invalid stream.
 - Do not silently discard or alter source audio. Malformed files and non-AVC videos remain explicitly unsupported; a message about audio-track count no longer obscures the actual format.
+
+## Fragmented MP4 / Pexels input (V1.5)
+
+- The old guard wrongly rejected any `sidx` index as fragmented. Now only actual `moof`/`mfra` boxes trigger the separate remux path.
+- `normalize-fragmented.mjs` uses Mediabunny 1.56.3 from CDN only when a genuine fragmented MP4 is selected. It requires one primary H.264 video and AAC audio stream, `copy: { mode: 'forced' }`, and an output MP4 with fast-start. It fails closed if either stream would be discarded or transcoded.
+- The remux stage uses BufferTarget and thus temporarily holds the normalized video in memory. It limits fragmented remux to 220 MiB on iOS and 600 MiB on desktop (the standard non-fragmented lab can still process large files by Blob slicing). These limits are for memory safety and do not change the previous direct MP4 size limit.
+- Source without AAC (e.g. genuinely silent stock footage), or source HEVC/HDR, requires a different preparation route; the site must show a specific message rather than generating a broken output. TikTok quality behavior remains an empirical experiment, not a guarantee.
+- New automated tests generate a real fragmented H.264/AAC MP4 with FFmpeg, strictly verify original encoded video/audio packet hashes after remux and after Forge Track, and also exercise a non-fragmented MP4 with a standalone sidx atom.

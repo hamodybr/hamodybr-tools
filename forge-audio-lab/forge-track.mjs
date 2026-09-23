@@ -164,10 +164,12 @@ async function readTop(file){
   if(size32===1){if(b.length<16)fail('Truncated extended MP4 atom');size=Number(view(b).getBigUint64(8,false));hdr=16;}
   else if(size32===0)fail('Unbounded '+type+' box is unsupported by this experiment');
   if(!Number.isSafeInteger(size)||size<hdr||pos+size>file.size)fail('Invalid MP4 atom '+type);
+  if(type==='moof')fail('FRAGMENTED_MP4');
   const item={start:pos,end:pos+size,size,hdr,type};top.push(item);pos+=size;
   if(top.length>128)fail('Too many top-level MP4 atoms');
  }
- if(top.some(b=>['moof','sidx','mfra'].includes(b.type)))fail('Fragmented MP4 not supported');
+ if(top.some(b=>b.type==='mfra'))fail('FRAGMENTED_MP4');
+ // sidx is an index; its presence alone does not make the media fragmented.
  const moovs=top.filter(b=>b.type==='moov'),mdats=top.filter(b=>b.type==='mdat');
  if(moovs.length!==1||mdats.length!==1)fail('Requires an MP4 containing exactly one moov and one mdat atom');
  const moovFile=moovs[0], mdat=mdats[0];
