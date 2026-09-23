@@ -21,3 +21,7 @@ jobs:
           node --check tiktok-studio-v3/smooth4k-audio.mjs
       - name: Test HDR guards and FPS invariants
         run: node --test tiktok-studio-v3/smooth4k-plan.test.mjs tiktok-studio-v3/smooth4k-audio.test.mjs
+      - name: Install Mediabunny and node media backend
+        run: npm install --no-save --no-package-lock mediabunny@1.56.3 @mediabunny/server@1.56.3
+      - name: Test original AAC packets with real FFmpeg-generated MP4
+        run: node --test tiktok-studio-v3/smooth4k-audio.integration.test.mjs
