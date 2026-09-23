@@ -1,17 +1,21 @@
 import {
   Input, Output, Conversion, ALL_FORMATS, BlobSource, Mp4OutputFormat,
-  BufferTarget, Quality, canEncodeVideo, EncodedPacketSink
+  BufferTarget, Quality, canEncodeVideo, EncodedPacketSink, EncodedAudioPacketSource
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.56.3/+esm';
 import { addForgeLikeTrackFile, inspectForgeReadyFile } from '../forge-audio-lab/forge-track.mjs?v=6';
 import { makeSmoothPlan, validateSmoothOutput, makeVideoConversionOptions } from './smooth4k-plan.mjs?v=3';
+import {
+  emptyAacFingerprint, feedAacFingerprint, sameAacFingerprint,
+  aacFingerprintText, pipeOriginalAac
+} from './smooth4k-audio.mjs?v=1';
 
 const $ = id => document.getElementById(id);
 const mib = n => (n / 1048576).toFixed(2) + ' MB';
 const sleepFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 const isMobile = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 const maxSourceBytes = (isMobile ? 160 : 360) * 1048576;
-let file = null, input = null, video = null, audio = null, source = null, plan = null;
-let busy = false, selected = 0, conversion = null, wake = null, outputUrl = null, outputFile = null;
+let file = null, input = null, video = null, audio = null, audioDecoderConfig = null, source = null, plan = null;
+let busy = false, selected = 0, conversion = null, currentOutput = null, cancelRequested = false, wake = null, outputUrl = null, outputFile = null;
 let pct = 0, began = 0, ticker = null, phase = 'بانتظار الملف', detail = '0%';
 
 function progress(p, message, extra = '') {
@@ -42,22 +46,15 @@ function refresh() {
 }
 function colorString(color) { return [color?.primaries, color?.transfer, color?.matrix].filter(Boolean).join(' / ') || 'Unknown'; }
 
-async function fingerprint(track) {
-  const result = { packets: 0, bytes: 0, hash: 2166136261 >>> 0 };
+async async function fingerprint(track) {
+  const result = emptyAacFingerprint();
   if (!track) return result;
-  for await (const packet of new EncodedPacketSink(track).packets()) {
-    const b = packet.data;
-    for (let i = 0; i < b.length; i++) result.hash = Math.imul(result.hash ^ b[i], 16777619) >>> 0;
-    result.bytes += b.length;
-    result.packets++;
-  }
+  for await (const packet of new EncodedPacketSink(track).packets())
+    feedAacFingerprint(result, packet.data);
   return result;
 }
-function sameFingerprint(a, b) {
-  return a.packets === b.packets && a.bytes === b.bytes && a.hash === b.hash;
-}
 function blank() {
-  file = input = video = audio = source = plan = null;
+  file = input = video = audio = audioDecoderConfig = source = plan = null;
   $('meta').hidden = true; $('analysis').textContent = 'جاري انتظار فحص الملف…';
   refresh(); clearResult();
 }
@@ -99,7 +96,7 @@ async function checkSource(f, token) {
   if (token !== selected) return;
   if (!supported) throw new Error('متصفح هذا الجهاز لا يدعم ترميز '+p.codec.toUpperCase()+' بدقة 4K. ما راح نقلل الدقة أو نغيّر نظام الألوان بصمت.');
   source = { width:w,height:h,fps,duration,rotation:rot,color };
-  input = opened; video = v; audio = a; plan = p;
+  input = opened; video = v; audio = a; audioDecoderConfig = audioCfg; plan = p;
   $('analysis').className = 'note ok';
   $('analysis').textContent = p.colorMode === 'hlg'
     ? 'المصدر '+codec.toUpperCase()+' / HLG BT.2020. اخترنا وصفة B: HEVC Main10 4K / '+p.targetFps.toFixed(2)+'fps / 18.6Mbps. يتم تدقيق Main10 والصوت بعد الترميز.'
@@ -152,8 +149,10 @@ async function verifyEncoded(blob, audioBefore, expectedPlan) {
     width:w,height:h,codec,color:cs,rotation:rot,duration:dur,
     fps:fpsMetrics.bestGuessFrameRate,decoderCodec:decConfig?.codec
   },expectedPlan);
-  if (aCodec !== 'aac' || !sameFingerprint(audioBefore,afterAudio))
-    throw new Error('Primary AAC packet-copy verification failed. No file will be offered.');
+  if (aCodec !== 'aac' || !sameAacFingerprint(audioBefore, afterAudio))
+    throw new Error('Primary AAC packet-copy verification failed. Source: ' +
+      aacFingerprintText(audioBefore) + '. Output: ' +
+      aacFingerprintText(afterAudio) + '. No file will be offered.');
   const expectedFrames = source.duration * expectedPlan.targetFps;
   if (Math.abs(frameStats.packetCount - expectedFrames) > Math.max(2,expectedFrames * .02))
     throw new Error('Encoded frame count differs unexpectedly from real-time 30fps target.');
@@ -161,12 +160,15 @@ async function verifyEncoded(blob, audioBefore, expectedPlan) {
 }
 
 $('stop').addEventListener('click', async () => {
-  $('stop').disabled = true; report('جاري إيقاف العملية…');
+  $('stop').disabled = true;
+  cancelRequested = true;
+  report('جاري إيقاف العملية…');
   try { await conversion?.cancel(); } catch {}
+  try { if (currentOutput?.state === 'started') await currentOutput.cancel(); } catch {}
 });
 $('run').addEventListener('click', async () => {
   if ($('run').disabled || busy || !file || !input || !plan) return;
-  busy = true; clearResult(); refresh(); pct=0; began=performance.now();
+  busy = true; cancelRequested = false; clearResult(); refresh(); pct=0; began=performance.now();
   ticker = setInterval(() => progress(pct,phase,detail),1000);
   await holdWake();
   const f = file, activePlan = plan, useForge = $('forge').checked;
@@ -178,23 +180,45 @@ $('run').addEventListener('click', async () => {
     const q = new Quality({bitrate:activePlan.bitrate,bitrateMode:'constant'});
     const target = new BufferTarget();
     const out = new Output({format:new Mp4OutputFormat({fastStart:'in-memory'}),target});
+    currentOutput = out;
+    // Let Conversion transcode only the picture. Audio copy by Conversion is not
+    // guaranteed to preserve exact encoded packets; add our own AAC source.
     conversion = await Conversion.init({
-      input,output:out,tracks:'primary',copy:{mode:'preferred'},showWarnings:false,
+      input, output:out, tracks:'primary', audio:{discard:true},
+      composable:true, copy:{mode:'preferred'}, showWarnings:false,
       video:makeVideoConversionOptions(activePlan,q)
     });
-    if (!conversion.isValid || !conversion.utilizedTracks.includes(video) || !conversion.utilizedTracks.includes(audio))
+    if (!conversion.isValid || !conversion.utilizedTracks.includes(video))
       throw new Error('محرّك المعالجة رفض إعداد '+activePlan.codec.toUpperCase()+' / AAC. لا توجد نتيجة.');
+    const audioSource = new EncodedAudioPacketSource('aac');
+    out.addAudioTrack(audioSource);
     refresh();
     conversion.onProgress = p => {
       const fraction = Math.max(0,Math.min(1,p));
       const estimated = (activePlan.bitrate/8 * source.duration * fraction);
       progress(10 + fraction*65,'المرحلة 2/4: ترميز الفيديو محلياً…',Math.round(fraction*100)+'% من المدة • حجم متوقع '+mib(estimated));
     };
-    await conversion.execute();
-    conversion=null;refresh();
+    await out.start();
+    const [_, audioWritten] = await Promise.all([
+      conversion.execute(),
+      pipeOriginalAac({
+        track: audio,
+        sinkFactory: track => new EncodedPacketSink(track).packets(),
+        source: audioSource,
+        decoderConfig: audioDecoderConfig,
+        isCanceled: () => cancelRequested
+      })
+    ]);
+    if (!sameAacFingerprint(sourceAudio, audioWritten))
+      throw new Error('AAC copy changed while feeding the muxer. Source: ' +
+        aacFingerprintText(sourceAudio) + ' • Written: ' +
+        aacFingerprintText(audioWritten));
+    if (cancelRequested) throw new Error('ConversionCanceledError');
+    await out.finalize();
+    currentOutput=null; conversion=null; refresh();
     if (!target.buffer) throw new Error('لم ينتج المحرك ملف MP4.');
     let blob = new Blob([target.buffer],{type:'video/mp4'});
-    progress(80,'المرحلة 3/4: تدقيق '+(activePlan.colorMode === 'hlg' ? '10-bit/HDR' : 'SDR BT.709')+'/FPS والصوت…',mib(blob.size));
+    progress(80,'المرحلة 3/4: تدقيق '+(activePlan.colorMode === 'hlg' ? '10-bit/HDR' : 'SDR BT.709')+'/FPS وبصمة AAC بعد التغليف…',mib(blob.size));
     const checked = await verifyEncoded(blob,sourceAudio,activePlan);
     if (useForge) {
       progress(88,'المرحلة 4/4: تطبيق مسار Forge المجرب بدون تعديل الصوت الأساسي…');
@@ -229,11 +253,16 @@ $('run').addEventListener('click', async () => {
     report('اكتمل فحص 4K / '+(activePlan.colorMode === 'hlg' ? 'HDR / Main10' : 'SDR BT.709')+' / الصوت بنجاح. تأكد من التشغيل قبل الرفع.');
   } catch(e) {
     console.error(e);
+    try { await conversion?.cancel(); } catch {}
+    try {
+      if (currentOutput && !['canceled', 'finalized'].includes(currentOutput.state))
+        await currentOutput.cancel();
+    } catch {}
     clearResult();
-    report((e?.name === 'ConversionCanceledError' ? 'تم إيقاف المعالجة.' : 'فشلت المعالجة بأمان: '+(e?.message || e)),true);
+    report(((e?.name === 'ConversionCanceledError' || cancelRequested) ? 'تم إيقاف المعالجة.' : 'فشلت المعالجة بأمان: '+(e?.message || e)),true);
     progress(0,'لم يكتمل الملف');
   } finally {
-    clearInterval(ticker);ticker=null;began=0;conversion=null;busy=false;
+    clearInterval(ticker);ticker=null;began=0;conversion=null;currentOutput=null;cancelRequested=false;busy=false;
     await releaseWake();refresh();
   }
 });
