@@ -82,6 +82,42 @@ try {
   }
   execFileSync('ffmpeg',['-v','error','-xerror','-i',forgePath,'-map','0:v:0','-map','0:a:0','-f','null','-'],{timeout:40000});
  });
+ await test('silent Pexels-like fragmented MP4 receives valid AAC silence without video transcode',async()=>{
+  const silent=join(temp,'silent-fragmented.mp4'),normalized=join(temp,'silent-normalized.mp4'),forge=join(temp,'silent-forge.mp4');
+  execFileSync('ffmpeg',['-v','error','-y','-i',original,'-map','0:v:0','-an','-c','copy','-movflags','+frag_keyframe+empty_moov+default_base_moof','-frag_duration','500000',silent],{timeout:40000});
+  const {normalizeFragmentedFile}=await import('./normalize-fragmented.mjs'),M=await import('mediabunny');
+  const source=await openAsBlob(silent);
+  await assert.rejects(inspectForgeReadyFile(source),/FRAGMENTED_MP4/);
+  const prepared=await normalizeFragmentedFile(source,()=>{},M,{mobile:false});
+  assert.equal(prepared.addedSilentAudio,true);
+  await writeFile(normalized,Buffer.from(await prepared.file.arrayBuffer()));
+  const state=await inspectForgeReadyFile(prepared.file);
+  assert.equal(state.audioTrackCount,1);assert.equal(state.audioTimescale,48000);
+  const result=await addForgeLikeTrackFile(prepared.file);
+  await writeFile(forge,Buffer.from(await result.output.arrayBuffer()));
+  const stream=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=index,codec_name,sample_rate,nb_frames','-of','json',forge]).toString());
+  assert.equal(stream.streams.length,3);assert.equal(stream.streams[1].codec_name,'aac');
+  assert.equal(stream.streams[1].sample_rate,'48000');
+  assert.equal(+stream.streams[2].nb_frames,state.samples+TAIL_COUNT);
+  const hash=(path,map)=>execFileSync('ffmpeg',['-v','error','-i',path,'-map',map,'-c','copy','-f','md5','-']).toString().trim();
+  assert.equal(hash(silent,'0:v:0'),hash(normalized,'0:v:0'));
+  assert.equal(hash(silent,'0:v:0'),hash(forge,'0:v:0'));
+  execFileSync('ffmpeg',['-v','error','-xerror','-i',forge,'-map','0:v:0','-map','0:a:0','-f','null','-'],{timeout:40000});
+ });
+ await test('non-fragmented silent MP4 can also receive AAC without touching video packets',async()=>{
+  const silent=join(temp,'silent-regular.mp4'),forge=join(temp,'silent-regular-forge.mp4');
+  execFileSync('ffmpeg',['-v','error','-y','-i',original,'-map','0:v:0','-an','-c','copy','-movflags','+faststart',silent],{timeout:40000});
+  const {normalizeFragmentedFile}=await import('./normalize-fragmented.mjs'),M=await import('mediabunny');
+  const source=await openAsBlob(silent);
+  await assert.rejects(inspectForgeReadyFile(source),/Requires at least one AAC audio track; found 0 audio tracks/);
+  const prepared=await normalizeFragmentedFile(source,()=>{},M,{mobile:false});
+  assert.equal(prepared.addedSilentAudio,true);
+  const result=await addForgeLikeTrackFile(prepared.file);
+  await writeFile(forge,Buffer.from(await result.output.arrayBuffer()));
+  const hash=(path)=>execFileSync('ffmpeg',['-v','error','-i',path,'-map','0:v:0','-c','copy','-f','md5','-']).toString().trim();
+  assert.equal(hash(silent),hash(forge));
+  execFileSync('ffmpeg',['-v','error','-xerror','-i',forge,'-map','0:a:0','-f','null','-'],{timeout:40000});
+ });
  await test('44.1 kHz AAC timebase is accepted without resampling or re-encoding',async()=>{
   const input=join(temp,'aac-44100.mp4'),out=join(temp,'aac-44100-output.mp4');
   execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','testsrc2=size=240x426:rate=30','-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-t','1.25','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-ar','44100','-movflags','+faststart',input],{timeout:40000});
