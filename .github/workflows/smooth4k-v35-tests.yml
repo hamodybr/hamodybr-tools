@@ -18,5 +18,6 @@ jobs:
         run: |
           node --check tiktok-studio-v3/smooth4k-plan.mjs
           node --check tiktok-studio-v3/smooth4k.mjs
+          node --check tiktok-studio-v3/smooth4k-audio.mjs
       - name: Test HDR guards and FPS invariants
-        run: node --test tiktok-studio-v3/smooth4k-plan.test.mjs
+        run: node --test tiktok-studio-v3/smooth4k-plan.test.mjs tiktok-studio-v3/smooth4k-audio.test.mjs
