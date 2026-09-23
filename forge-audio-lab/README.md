@@ -53,5 +53,12 @@ Keep the previously successful Forge original as control; test this generated va
 - The old guard wrongly rejected any `sidx` index as fragmented. Now only actual `moof`/`mfra` boxes trigger the separate remux path.
 - `normalize-fragmented.mjs` uses Mediabunny 1.56.3 from CDN only when a genuine fragmented MP4 is selected. It requires one primary H.264 video and AAC audio stream, `copy: { mode: 'forced' }`, and an output MP4 with fast-start. It fails closed if either stream would be discarded or transcoded.
 - The remux stage uses BufferTarget and thus temporarily holds the normalized video in memory. It limits fragmented remux to 220 MiB on iOS and 600 MiB on desktop (the standard non-fragmented lab can still process large files by Blob slicing). These limits are for memory safety and do not change the previous direct MP4 size limit.
-- Source without AAC (e.g. genuinely silent stock footage), or source HEVC/HDR, requires a different preparation route; the site must show a specific message rather than generating a broken output. TikTok quality behavior remains an empirical experiment, not a guarantee.
+- Sources with no audio (common in stock footage) can now receive a valid 48-kHz stereo AAC-LC silence track during the optional preparation step; original video packets are copied without re-encoding. A source with non-AAC audio, or HEVC/HDR video, still requires a separate preparation route and is not silently transcoded. TikTok quality behavior remains an empirical experiment, not a guarantee.
 - New automated tests generate a real fragmented H.264/AAC MP4 with FFmpeg, strictly verify original encoded video/audio packet hashes after remux and after Forge Track, and also exercise a non-fragmented MP4 with a standalone sidx atom.
+
+## Silent stock footage (V1.6)
+
+- For either fragmented or ordinary H.264 MP4 with **zero audio tracks**, use forced packet copy for video and add a valid 48 kHz stereo AAC-LC silence track. The source's original picture bytes are preserved, and there was no original audio to change.
+- The six-byte AAC-LC silent frame `21 10 04 60 8C 1C` with ASC `11 90` was validated by a strict FFmpeg AAC decode; the standalone sound is encoded silence. Subsequent experimental secondary AAC packets remain deliberately invalid, as before.
+- This additional AAC silence step runs only when the source truly has no audio. Non-AAC original sound is *not* discarded or replaced. Remux memory caps remain in effect.
+- Automated tests exercise both fragmented and ordinary silent stock-video cases, comparing source and final video packet MD5s, inspecting AAC, and strictly decoding video and primary audio.
