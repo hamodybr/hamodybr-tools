@@ -29,6 +29,7 @@ function boxList(a, start = 0, end = a.length) {
 }
 function children(a, box) { return boxList(a,box.start+box.hdr,box.end); }
 function child(a, box, type) { const found=children(a,box).find(b=>b.type===type);if(!found) fail('Missing MP4 atom '+type);return found; }
+function sameBytes(a,b){if(a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true;}
 function pack(parts) { const size=parts.reduce((n,p)=>n+p.length,0);const a=new Uint8Array(size);let off=0;for(const p of parts){a.set(p,off);off+=p.length;}return a; }
 function makeBox(type, payload) { const size=8+payload.length;if(size>0xffffffff)fail('MP4 box exceeds 4GB');const out=new Uint8Array(size);w32(out,0,size);out.set(enc.encode(type),4);out.set(payload,8);return out; }
 function extendTable(a,b,bytes,countOffset,newCount){
@@ -200,9 +201,24 @@ async function readTop(file){
  if(moov.type!=='moov'||moov.size!==moovFile.size)fail('MP4 metadata could not be parsed');
  return {a,top,moov,moovFile,mdat,fullSize:file.size,syntheticTailStart,syntheticTailEnd};
 }
+function videoTrackMetrics(x) {
+ const vt=x.tracks.find(t=>aTrackKind(x.a,t)==='vide');
+ const tbl=stblFromTrack(x.a,vt);
+ const stsz=child(x.a,tbl,'stsz');
+ const tkhd=child(x.a,vt,'tkhd');
+ const duration=versionedDuration(x.a,child(x.a,child(x.a,vt,'mdia'),'mdhd'));
+ const frames=u32(x.a,stsz.start+16);
+ const width=u32(x.a,tkhd.end-8)/65536;
+ const height=u32(x.a,tkhd.end-4)/65536;
+ return {videoFrames:frames,videoWidth:width,videoHeight:height,
+   videoFps:duration.seconds>0?frames/duration.seconds:null};
+}
 export async function inspectForgeReadyFile(file){
  const x=verifyInput(await readTop(file));
- return {videoCodec:x.videoCodec,audioCodec:'mp4a',samples:x.samples,audioSeconds:x.time.seconds,sizeBytes:file.size,audioTimescale:x.time.scale,audioTrackCount:x.audioTrackCount,alreadyProcessed:x.alreadyProcessed,tailPackets:TAIL_COUNT};
+ return {...videoTrackMetrics(x),videoCodec:x.videoCodec,audioCodec:'mp4a',
+   samples:x.samples,audioSeconds:x.time.seconds,sizeBytes:file.size,
+   audioTimescale:x.time.scale,audioTrackCount:x.audioTrackCount,
+   alreadyProcessed:x.alreadyProcessed,tailPackets:TAIL_COUNT};
 }
 export async function addForgeLikeTrackFile(file){
  const x=verifyInput(await readTop(file));
@@ -246,5 +262,29 @@ export async function addForgeInsideMdatFile(file) {
     verified.samples!==x.samples || verified.audioTrackCount!==x.audioTrackCount+1 ||
     verified.syntheticTailEnd!==verified.mdat.end)
    fail('Output safety check failed: new track or original streams differ.');
- return {output,report:{...plan.report,originalContainer:file.name.toLowerCase().endsWith('.mov')?'MOV':'MP4'}};
+ // Validate the copied video and primary AAC descriptions, timing and sample
+ // sizes. Chunk offset tables legitimately change when moov grows.
+ for (const kind of ['vide','soun']) {
+   const before=x.tracks.find(t=>aTrackKind(x.a,t)===kind);
+   const after=verified.tracks.find(t=>aTrackKind(verified.a,t)===kind);
+   if(!before || !after)fail('Missing original '+kind+' track');
+   const pairs=[
+     [x.a,stblFromTrack(x.a,before)],
+     [verified.a,stblFromTrack(verified.a,after)]
+   ];
+   for(const type of ['stsd','stts','stsz','ctts','stss']) {
+     const b1=children(pairs[0][0],pairs[0][1]).find(b=>b.type===type);
+     const b2=children(pairs[1][0],pairs[1][1]).find(b=>b.type===type);
+     if(!!b1!==!!b2)fail('Original '+kind+' '+type+' metadata lost');
+     if(b1 && !sameBytes(pairs[0][0].subarray(b1.start,b1.end),
+                         pairs[1][0].subarray(b2.start,b2.end)))
+       fail('Original '+kind+' '+type+' metadata changed');
+   }
+ }
+ const a=videoTrackMetrics(x),b=videoTrackMetrics(verified);
+ if(a.videoFrames!==b.videoFrames || a.videoFps!==b.videoFps ||
+    a.videoWidth!==b.videoWidth || a.videoHeight!==b.videoHeight)
+   fail('Source frame-rate or dimensions changed.');
+ return {output,report:{...plan.report,...a,
+   originalContainer:file.name.toLowerCase().endsWith('.mov')?'MOV':'MP4'}};
 }
