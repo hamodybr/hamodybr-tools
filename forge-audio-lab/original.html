@@ -104,9 +104,9 @@ $('source').addEventListener('change',async()=>{
    if(token!==serial)return;
    const message=e?.message||String(e);
    const chosenLabel='الملف المختار: '+name+' ('+fmt(f.size)+'). ';
-   if(message.startsWith('NO_AUDIO_TRACK:')){
+   if(/Requires at least one AAC audio track; found 0 audio tracks/.test(message)){
      report(chosenLabel+'ماكو أي مسار صوت داخل هذا الملف. أداة Forge تحتاج AAC أصلي حتى تنسخه؛ ما راح نضيف صوت صامت أو نغيّر الصورة بدون موافقتك. إذا تقصد Original.mov اللي فحصناه سابقاً، تأكد تختار الملف الأصلي من Files > Browse، مو نسخة مُصدّرة أو صامتة. '+message,'error');
-   }else if(message.startsWith('NON_AAC_AUDIO:')){
+   }else if(/Requires at least one AAC audio track; found [1-9][0-9]* audio tracks/.test(message)){
      report(chosenLabel+'أكو صوت، لكن ترميزه مو AAC (mp4a). ما نكدر ننسخ نفس مسار Forge من هذا المصدر بدون تحويل الصوت، ولهذا وقفنا. '+message,'error');
    }else{
      report(chosenLabel+'تعذّر إضافة المسار بدون تغيير المصدر: '+message+
