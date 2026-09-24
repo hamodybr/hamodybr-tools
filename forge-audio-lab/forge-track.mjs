@@ -70,8 +70,14 @@ function verifyInput({a,top,moov,moovFile,mdat,fullSize,syntheticTailStart=null,
  if(videos.length!==1)fail('Requires exactly one video track; found '+videos.length);
  const videoCodec=codecFromTrack(a,videos[0]);
  if(!['avc1','avc3','hvc1','hev1'].includes(videoCodec))fail('Unsupported video codec '+videoCodec+'. This lab supports AVC and HEVC in MP4.');
+ const audioCodecs=audios.map(b=>codecFromTrack(a,b));
  const aacs=audios.filter(b=>codecFromTrack(a,b)==='mp4a');
- if(!aacs.length)fail('Requires at least one AAC audio track; found '+audios.length+' audio tracks');
+ if(!aacs.length) {
+   const reason=audios.length===0
+     ? 'NO_AUDIO_TRACK: This file contains no audio track. Forge needs an existing AAC track to duplicate.'
+     : 'NON_AAC_AUDIO: Found '+audios.length+' audio track(s) with codec tags ['+audioCodecs.join(', ')+']; no AAC (mp4a) source to duplicate.';
+   fail(reason+' Source video codec: '+videoCodec+'.');
+ }
  // Use the first AAC track and preserve any additional original audio/metadata tracks.
  // A known processed input is handled idempotently instead of adding another corrupt track.
  const audio=aacs[0],stbl=stblFromTrack(a,audio),mdhd=child(a,child(a,audio,'mdia'),'mdhd');
