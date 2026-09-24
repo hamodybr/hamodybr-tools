@@ -1,0 +1,29 @@
+name: Smooth 4K V3.5 safety tests
+on:
+  pull_request:
+    paths:
+      - 'tiktok-studio-v3/smooth4k*'
+      - 'tiktok-studio-v3/v35.html'
+      - '.github/workflows/smooth4k-v35-tests.yml'
+  workflow_dispatch:
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JS syntax
+        run: |
+          node --check tiktok-studio-v3/smooth4k-plan.mjs
+          node --check tiktok-studio-v3/smooth4k.mjs
+          node --check tiktok-studio-v3/smooth4k-audio.mjs
+      - name: Test HDR guards and FPS invariants
+        run: node --test tiktok-studio-v3/smooth4k-plan.test.mjs tiktok-studio-v3/smooth4k-audio.test.mjs
+      - name: Install Mediabunny and node media backend
+        run: npm install --no-save --no-package-lock mediabunny@1.56.3 @mediabunny/server@1.56.3
+      - name: Install FFmpeg for source fixture
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Test original AAC packets with real FFmpeg-generated MP4
+        run: node --test tiktok-studio-v3/smooth4k-audio.integration.test.mjs
