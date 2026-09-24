@@ -1,0 +1,26 @@
+name: Forge Add Only — Original video preservation
+on:
+  pull_request:
+    paths:
+      - 'forge-audio-lab/forge-track.mjs'
+      - 'forge-audio-lab/original.html'
+      - 'forge-audio-lab/forge-original.test.mjs'
+      - '.github/workflows/forge-original-tests.yml'
+  workflow_dispatch:
+jobs:
+  lossless:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install FFmpeg/FFprobe
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - name: Check syntax
+        run: |
+          node --check forge-audio-lab/forge-track.mjs
+          node --check forge-audio-lab/forge-original.test.mjs
+      - name: Test lossless MOV/MP4 packet copy and idempotency
+        run: node --test forge-audio-lab/forge-original.test.mjs

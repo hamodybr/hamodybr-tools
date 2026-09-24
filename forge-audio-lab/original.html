@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#100d1b">
+<meta name="robots" content="noindex,nofollow">
+<title>HAMODYBR • Forge Add Only</title>
+<style>
+:root{color-scheme:dark;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#100d1b;color:#f8f8fc}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#48337b 0%,transparent 44%),#100d1b}
+main{max-width:760px;margin:0 auto;padding:18px 16px 76px}
+.brand{font:900 13px system-ui;letter-spacing:.13em;color:#d7d0ff;direction:ltr;text-align:left}
+.brand b{color:#94f0dc}h1{line-height:1.27;font-size:clamp(29px,7vw,43px);margin:14px 0}
+p{color:#c7c4d5;margin:8px 0 15px}.eyebrow{display:inline-block;border:1px solid #836fe1;color:#e6dfff;border-radius:24px;padding:3px 12px;font-size:12px}
+.card{border:1px solid #51456e;background:#1c1930;border-radius:20px;padding:20px;margin:17px 0;box-shadow:0 12px 35px #0002}
+.warn{background:#302516;border-color:#8a6935}.ok{background:#15372f;border-color:#427e6a}.note{font-size:13px;color:#bdc0d2}
+.file{display:block;border:2px dashed #8e7cc3;background:#292341;padding:27px 16px;border-radius:16px;text-align:center;cursor:pointer;margin:17px 0}
+.file strong{display:block;font-size:17px;color:white}.file small{display:block;overflow-wrap:anywhere;color:#c9c4dd}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+.stat{background:#141127;border:1px solid #302c48;border-radius:13px;padding:11px;overflow-wrap:anywhere}
+.stat span{display:block;font-size:12px;color:#b9b5ca}.stat strong{font:700 15px/1.5 system-ui;direction:ltr;unicode-bidi:isolate;display:block}
+label.agree{display:flex;align-items:flex-start;gap:11px;font-size:13px;margin:15px 0}
+label.agree input{margin-top:8px;transform:scale(1.2);accent-color:#9f8af9}
+.btn{border:0;border-radius:14px;padding:14px 20px;color:white;background:#7866ec;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;width:100%;margin-top:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}.btn.alt{background:#344c56;border:1px solid #6e9d9a}
+#status{overflow-wrap:anywhere;min-height:35px}.error{color:#ffb6ac!important}.success{color:#8df4d0!important}
+progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
+[hidden]{display:none!important}footer{text-align:center;color:#938ca9;font-size:12px}
+</style>
+</head>
+<body><main>
+<div class="brand">HAMODY<b>BR</b> / VIDEO LAB</div>
+<div class="eyebrow">ADD-ONLY • ORIGINAL STREAM COPY</div>
+<h1>أضف Forge لفيديوك الأصلي<br>بدون خسارة 60fps أو HDR</h1>
+<p>اختار الفيديو الأصلي من الآيفون. الأداة تضيف المسار التجريبي <b>داخل mdat</b>، وتحتفظ بحزم الفيديو والصوت الأصلية بدون إعادة ترميز أو تقليل الدقة أو الـbitrate.</p>
+<div class="card warn"><strong>⚠️ تجربة وليست ضماناً لجودة TikTok</strong>
+<p class="note">مسار Forge الثاني يحتوي حزم AAC غير قابلة للفك عمداً. ممكن TikTok يرفضه، يغيّر طريقة المعالجة، أو يسبب تقطيعاً. احتفظ بالملف الأصلي. MOV يبقى MOV وMP4 يبقى MP4؛ ما نحذف مسارات بيانات كامرة الآيفون. لا نغيّر Dolby Vision أو HDR، لكن قبولها عند TikTok غير مضمون.</p></div>
+<section class="card">
+<h2>1. اختار الفيديو الأصلي</h2>
+<label for="source" class="file"><strong id="fileName">اختيار MOV أو MP4</strong><small>من Files / Browse • المعالجة كلها داخل الجهاز • بدون رفع لسيرفر</small></label>
+<input id="source" type="file" accept=".mp4,.mov,video/mp4,video/quicktime">
+<div id="details" hidden>
+<div class="stats">
+ <div class="stat"><span>الحاوية الأصلية</span><strong id="container">—</strong></div>
+ <div class="stat"><span>ترميز الفيديو</span><strong id="codec">—</strong></div>
+ <div class="stat"><span>الدقة المسجلة</span><strong id="resolution">—</strong></div>
+ <div class="stat"><span>معدل الإطارات (متوسط)</span><strong id="fps">—</strong></div>
+ <div class="stat"><span>إطارات الفيديو</span><strong id="frames">—</strong></div>
+ <div class="stat"><span>حزم AAC الأصلي</span><strong id="aac">—</strong></div>
+ <div class="stat"><span>الحجم الأصلي</span><strong id="size">—</strong></div>
+ <div class="stat"><span>إضافة Forge</span><strong>6,912 packets</strong></div>
+</div>
+</div>
+<p id="status" role="status" aria-live="polite">بانتظار اختيار الفيديو.</p>
+<progress id="progress" max="100" value="0" hidden></progress>
+<label class="agree"><input id="agree" type="checkbox"><span>أفهم أن مسار الصوت التجريبي غير صالح، وقد يسبب مشاكل توافق. أحتفظ بنسخة التصوير الأصلية.</span></label>
+<button class="btn" id="run" type="button" disabled>2. أضف المسار فقط — بدون إعادة ترميز</button>
+</section>
+<section class="card ok" id="result" hidden>
+<h2>النسخة التجريبية جاهزة ✓</h2>
+<p id="report"></p>
+<a id="download" class="btn" download>حفظ الملف التجريبي</a>
+<button id="share" class="btn alt" type="button" hidden>مشاركة / حفظ في Files</button>
+<p class="note">بعد حفظ الملف، جرّبه محلياً ثم على TikTok. الأداة لا تدّعي أن TikTok سيحتفظ بدقة 4K أو 60fps بعد الرفع.</p>
+</section>
+<footer>HAMODYBR • V3.4 و V3.5 بدون تعديل</footer>
+</main>
+<script type="module">
+import {inspectForgeReadyFile,addForgeInsideMdatFile} from './forge-track.mjs?v=9';
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
+let chosen=null,info=null,busy=false,serial=0,url=null,output=null;
+function report(text,kind=''){const e=$('status');e.textContent=text;e.className=kind;}
+function progress(n){$('progress').hidden=false;$('progress').value=n;}
+function clear(){output=null;$('result').hidden=true;if(url)URL.revokeObjectURL(url);url=null;}
+function refresh(){$('run').disabled=busy||!chosen||!info||!$('agree').checked;}
+$('agree').addEventListener('change',refresh);
+$('source').addEventListener('change',async()=>{
+ const f=$('source').files?.[0],token=++serial;
+ chosen=null;info=null;clear();$('details').hidden=true;$('progress').hidden=true;refresh();
+ if(!f)return;
+ const name=f.name||'video';
+ $('fileName').textContent=name;
+ if(!/\.(mp4|mov)$/i.test(name)){report('اختار ملف MOV أو MP4 أصلي. لا نغيّر الامتداد تلقائياً.','error');return;}
+ progress(5);report('جاري فحص جداول الملف محلياً…');
+ try{
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+   const value=await inspectForgeReadyFile(f);
+   if(token!==serial)return;
+   chosen=f;info=value;
+   $('container').textContent=name.toLowerCase().endsWith('.mov')?'MOV':'MP4';
+   $('codec').textContent=String(value.videoCodec).toUpperCase();
+   $('resolution').textContent=value.videoWidth+' × '+value.videoHeight;
+   $('fps').textContent=value.videoFps?value.videoFps.toFixed(3)+'fps':'غير متاح';
+   $('frames').textContent=value.videoFrames.toLocaleString('en');
+   $('aac').textContent=value.samples.toLocaleString('en');
+   $('size').textContent=fmt(f.size);
+   $('details').hidden=false;progress(100);
+   $('run').textContent=value.alreadyProcessed?'حفظ الملف الموجود بدون تكرار Forge':'2. أضف المسار فقط — بدون إعادة ترميز';
+   report(value.alreadyProcessed?'الملف يحتوي المسار التجريبي مسبقاً؛ لن نضيفه مرة ثانية.':'جاهز: لا نغيّر دقة الصورة أو إطاراتها أو بيانات ترميزها.', 'success');
+ }catch(e){
+   if(token!==serial)return;
+   report('هذا الملف ما نكدر نعدّله بدون تغيير الأصل: '+(e?.message||String(e))+
+     ' • لا يوجد تحويل تلقائي ولا إضافة صوت صامت. للملفات المجزّأة استخدم MP4 غير مجزّأ مع نسخ الفيديو والصوت فقط.','error');
+ }finally{if(token===serial){$('progress').hidden=true;refresh();}}
+});
+$('run').addEventListener('click',async()=>{
+ if(!chosen||!info||busy||!$('agree').checked)return;
+ busy=true;clear();refresh();progress(15);
+ report('جاري إنشاء مسار Forge الثاني في mdat؛ بدون فك ترميز الصورة أو الصوت…');
+ try{
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+   const {output:blob,report:metrics}=await addForgeInsideMdatFile(chosen);
+   progress(85);output=blob;
+   const extension=/\.mov$/i.test(chosen.name)?'.mov':'.mp4';
+   const basename=chosen.name.replace(/\.(mov|mp4)$/i,'');
+   const filename=(basename||'video')+'-HAMODYBR-FORGE-ORIGINAL'+extension;
+   url=URL.createObjectURL(blob);$('download').href=url;$('download').download=filename;
+   $('share').hidden=!(navigator.share&&navigator.canShare);
+   $('report').textContent=metrics.alreadyProcessed
+     ?'الملف كان يحتوي Forge. تم إرجاعه بدون تغيير.'
+     :'الحجم '+fmt(chosen.size)+' → '+fmt(blob.size)+
+      ' • '+info.videoWidth+'×'+info.videoHeight+
+      ' • '+info.videoFps.toFixed(3)+'fps'+
+      ' • '+info.videoFrames+' إطار بدون إعادة ترميز'+
+      ' • نفس AAC الأصلي • '+metrics.addedTailPackets+' حزمة Forge داخل mdat.';
+   $('result').hidden=false;progress(100);
+   report('اكتمل فحص التوقيت ووصف الصورة والصوت الأساسي؛ الملف جاهز للتجربة.','success');
+ }catch(e){clear();report('أوقفنا المعالجة بأمان: '+(e?.message||String(e)),'error');}
+ finally{busy=false;$('progress').hidden=true;refresh();}
+});
+$('share').addEventListener('click',async()=>{
+ if(!output||!navigator.share)return;
+ const f=new File([output],$('download').download,{type:output.type});
+ try {
+   if(!navigator.canShare?.({files:[f]}))throw new Error('المشاركة غير مدعومة لهذا الحجم أو النوع');
+   await navigator.share({files:[f],title:'HAMODYBR Forge Original'});
+ }catch(e){if(e?.name!=='AbortError')report('تعذرت المشاركة: '+e.message+'. استخدم حفظ الملف.','error');}
+});
+</script>
+</body></html>
