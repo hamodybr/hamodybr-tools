@@ -91,7 +91,7 @@ function verifyInput({a,top,moov,moovFile,mdat,fullSize,syntheticTailStart=null,
  if(syntheticTailStart!==null && !otherAac)fail('Forge-like trailing data exists but no matching secondary AAC track was found');
  if(otherAac && syntheticTailStart===null)fail('Secondary Forge track exists but the synthetic tail is missing');
  const alreadyProcessed=!!otherAac;
- return {a,top,moov,moovFile,mdat,fullSize,tracks,videoCodec,audio,stbl,stts,stsc,stsz,stco,mdhd,time,samples,chunkCount,scEntries,descIndex,audioTrackCount:audios.length,alreadyProcessed};
+ return {a,top,moov,moovFile,mdat,fullSize,tracks,videoCodec,audio,stbl,stts,stsc,stsz,stco,mdhd,time,samples,chunkCount,scEntries,descIndex,audioTrackCount:audios.length,alreadyProcessed,syntheticTailStart,syntheticTailEnd};
 }
 function buildPlan(x,{insideMdat=false}={}){
  // The forged samples belong to the existing mdat when the user chooses the
