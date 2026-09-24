@@ -84,8 +84,8 @@ test('clear diagnosis of silent and non-AAC original sources; never touch video'
    '-f','lavfi','-i','testsrc2=size=320x180:rate=30','-t','0.6',
    '-c:v','libx264','-pix_fmt','yuv420p',silentPath],{timeout:60000});
  const silent=new File([readFileSync(silentPath)],'no-audio.mp4',{type:'video/mp4'});
- await assert.rejects(inspectForgeReadyFile(silent),/NO_AUDIO_TRACK: This file contains no audio track/);
- await assert.rejects(addForgeInsideMdatFile(silent),/NO_AUDIO_TRACK/);
+ await assert.rejects(inspectForgeReadyFile(silent),/Requires at least one AAC audio track; found 0 audio tracks/);
+ await assert.rejects(addForgeInsideMdatFile(silent),/Requires at least one AAC audio track; found 0 audio tracks/);
  const pcmPath=join(folder,'pcm.mov');
  execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y',
    '-f','lavfi','-i','testsrc2=size=320x180:rate=30',
@@ -93,6 +93,6 @@ test('clear diagnosis of silent and non-AAC original sources; never touch video'
    '-t','0.6','-c:v','libx264','-pix_fmt','yuv420p',
    '-c:a','pcm_s16le',pcmPath],{timeout:60000});
  const pcm=new File([readFileSync(pcmPath)],'pcm.mov',{type:'video/quicktime'});
- await assert.rejects(inspectForgeReadyFile(pcm),/NON_AAC_AUDIO: Found 1 audio track\(s\) with codec tags \[sowt\]/);
- await assert.rejects(addForgeInsideMdatFile(pcm),/NON_AAC_AUDIO/);
+ await assert.rejects(inspectForgeReadyFile(pcm),/Requires at least one AAC audio track; found 1 audio tracks/);
+ await assert.rejects(addForgeInsideMdatFile(pcm),/Requires at least one AAC audio track; found 1 audio tracks/);
 });
