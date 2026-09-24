@@ -102,8 +102,16 @@ $('source').addEventListener('change',async()=>{
    report(value.alreadyProcessed?'الملف يحتوي المسار التجريبي مسبقاً؛ لن نضيفه مرة ثانية.':'جاهز: لا نغيّر دقة الصورة أو إطاراتها أو بيانات ترميزها.', 'success');
  }catch(e){
    if(token!==serial)return;
-   report('هذا الملف ما نكدر نعدّله بدون تغيير الأصل: '+(e?.message||String(e))+
-     ' • لا يوجد تحويل تلقائي ولا إضافة صوت صامت. للملفات المجزّأة استخدم MP4 غير مجزّأ مع نسخ الفيديو والصوت فقط.','error');
+   const message=e?.message||String(e);
+   const chosenLabel='الملف المختار: '+name+' ('+fmt(f.size)+'). ';
+   if(/Requires at least one AAC audio track; found 0 audio tracks/.test(message)){
+     report(chosenLabel+'ماكو أي مسار صوت داخل هذا الملف. أداة Forge تحتاج AAC أصلي حتى تنسخه؛ ما راح نضيف صوت صامت أو نغيّر الصورة بدون موافقتك. إذا تقصد Original.mov اللي فحصناه سابقاً، تأكد تختار الملف الأصلي من Files > Browse، مو نسخة مُصدّرة أو صامتة. '+message,'error');
+   }else if(/Requires at least one AAC audio track; found [1-9][0-9]* audio tracks/.test(message)){
+     report(chosenLabel+'أكو صوت، لكن ترميزه مو AAC (mp4a). ما نكدر ننسخ نفس مسار Forge من هذا المصدر بدون تحويل الصوت، ولهذا وقفنا. '+message,'error');
+   }else{
+     report(chosenLabel+'تعذّر إضافة المسار بدون تغيير المصدر: '+message+
+       ' • ماكو تحويل تلقائي، وما نعيد ترميز الفيديو.','error');
+   }
  }finally{if(token===serial){$('progress').hidden=true;refresh();}}
 });
 $('run').addEventListener('click',async()=>{
