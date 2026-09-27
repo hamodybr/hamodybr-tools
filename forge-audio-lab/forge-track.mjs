@@ -142,7 +142,7 @@ function buildPlan(x,{insideMdat=false,tailCount=TAIL_COUNT}={}){
    : fullSize+delta;
  // All original sample data moved forward by delta when the larger moov is inserted.
  // The duplicated audio track shares the original AAC bytes, like the Forge sample.
- const newMoovRoot=boxList(newMoov)[0];let patchCount=0,tailCount=0;
+ const newMoovRoot=boxList(newMoov)[0];let patchCount=0,tailPatchCount=0;
  for(const b of gatherChunkBoxes(newMoov,newMoovRoot)){
    const n=u32(newMoov,b.start+12),step=b.type==='stco'?4:8;
    for(let i=0;i<n;i++){
@@ -152,10 +152,10 @@ function buildPlan(x,{insideMdat=false,tailCount=TAIL_COUNT}={}){
      const updated=isTail?syntheticOffset:original>=moovFile.end?original+delta:original;
      if(updated>0xffffffff && b.type==='stco')fail('Chunk offset overflow');
      if(b.type==='stco')w32(newMoov,pos,updated);else view(newMoov).setBigUint64(pos,BigInt(updated),false);
-     patchCount++;if(isTail)tailCount++;
+     patchCount++;if(isTail)tailPatchCount++;
    }
  }
- if(tailCount!==1)fail('Synthetic track offset could not be written');
+ if(tailPatchCount!==1)fail('Synthetic track offset could not be written');
  return {newMoov,tail,report:{sourceBytes:fullSize,outputBytes:fullSize+delta+tail.length,videoCodec:x.videoCodec,videoAndOriginalAudio:'Packet payloads unchanged (no transcode)',originalAudioSamples:samples,secondAudioSamples:samples+tailCount,addedTailPackets:tailCount,addedTailBytes:tail.length,originalDeclaredAudioSeconds:x.time.seconds,originalAudioTimescale:x.time.scale,mp4MoovGrowthBytes:delta,chunkOffsetsPatched:patchCount,tailOutsideMdat:!insideMdat,note:'Secondary AAC track intentionally invalid; platform behavior not guaranteed.'}};
 }
 async function matchesForgeTail(file,offset,end=file.size,expectedCount=null){
