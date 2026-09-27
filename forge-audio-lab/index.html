@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#100d1b">
 <meta name="robots" content="noindex,nofollow">
-<title>HAMODYBR • Forge Add Only</title>
+<title>HAMODYBR • TikTok Video Lab</title>
 <style>
 :root{color-scheme:dark;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#100d1b;color:#f8f8fc}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#48337b 0%,transparent 44%),#100d1b}
@@ -26,19 +26,28 @@ label.agree input{margin-top:8px;transform:scale(1.2);accent-color:#9f8af9}
 .btn{border:0;border-radius:14px;padding:14px 20px;color:white;background:#7866ec;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;width:100%;margin-top:12px}
 .btn:disabled{opacity:.45;cursor:not-allowed}.btn.alt{background:#344c56;border:1px solid #6e9d9a}
 #status{overflow-wrap:anywhere;min-height:35px}.error{color:#ffb6ac!important}.success{color:#8df4d0!important}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mode{appearance:none;border:1px solid #5b5277;background:#171428;color:#cfcadd;border-radius:15px;padding:14px 10px;font:800 14px/1.45 system-ui;cursor:pointer}.mode small{display:block;font-weight:500;color:#a9a4b9;margin-top:4px}.mode.active{border-color:#9c89ff;background:#342c58;color:#fff;box-shadow:0 0 0 1px #9c89ff55 inset}.mode.today.active{border-color:#6ccbb7;background:#173f37;box-shadow:0 0 0 1px #6ccbb755 inset}.preset{background:#121526;border:1px solid #373b55;border-radius:13px;padding:12px;margin-top:12px;font-size:13px;color:#c8c9d8}
 progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
 [hidden]{display:none!important}footer{text-align:center;color:#938ca9;font-size:12px}
 </style>
 </head>
 <body><main>
 <div class="brand">HAMODY<b>BR</b> / VIDEO LAB</div>
-<div class="eyebrow">ADD-ONLY • ORIGINAL STREAM COPY</div>
-<h1>أضف Forge لفيديوك الأصلي<br>بدون خسارة 60fps أو HDR</h1>
-<p>اختار الفيديو الأصلي من الآيفون. الأداة تضيف المسار التجريبي <b>خارج mdat</b> مثل النمط اللي رصدناه في Today.MP4، وتحتفظ بحزم الفيديو والصوت الأصلية بدون إعادة ترميز أو تقليل الدقة أو الـbitrate.</p>
-<div class="card warn"><strong>⚠️ تجربة وليست ضماناً لجودة TikTok</strong>
-<p class="note">مسار Forge الثاني يحتوي حزم AAC غير قابلة للفك عمداً. ممكن TikTok يرفضه، يغيّر طريقة المعالجة، أو يسبب تقطيعاً. احتفظ بالملف الأصلي. MOV يبقى MOV وMP4 يبقى MP4؛ ما نحذف مسارات بيانات كامرة الآيفون. لا نغيّر Dolby Vision أو HDR، لكن قبولها عند TikTok غير مضمون.</p></div>
+<div class="eyebrow">ORIGINAL X9 • TODAY REFERENCE</div>
+<h1>اختبر مسارين للجودة<br>على TikTok</h1>
+<p>خليت لك وضع <b>Original + X9</b> للحفاظ على الفيديو كما هو، ووضع <b>Today Reference</b> لتقريب مواصفات الفيديو المرجعي قبل إضافة X9 خارج mdat.</p>
+<div class="card warn"><strong>⚠️ مختبر تجريبي — مو ضمان لجودة TikTok</strong>
+<p class="note">Original Mode ما يعيد ترميز الصورة أو الصوت. Today Mode بالعكس يعيد الترميز عمداً حتى يقرب 1080×1920 H.264 ~59.94fps / 34Mbps / AAC 44.1kHz، ويحوّل HDR إلى SDR عبر canvas sRGB بالمتصفح. مسار X9 الثاني يبقى غير صالح عمداً وقد يتصرف TikTok وياه بشكل مختلف.</p></div>
 <section class="card">
-<h2>1. اختار الفيديو الأصلي</h2>
+<h2>1. اختار طريقة التجربة</h2>
+<div class="modes">
+<button id="modeOriginal" class="mode active" type="button">Original + X9<small>بدون إعادة ترميز • يحافظ على المصدر</small></button>
+<button id="modeToday" class="mode today" type="button">Today Reference<small>1080p H.264 ~59.94fps • 34Mbps</small></button>
+</div>
+<div id="modeDescription" class="preset">Original + X9: نحافظ على الفيديو والصوت الأصليين ونضيف Dynamic X9 خارج mdat فقط.</div>
+</section>
+<section class="card">
+<h2>2. اختار الفيديو الأصلي</h2>
 <label for="source" class="file"><strong id="fileName">اختيار MOV أو MP4</strong><small>من Files / Browse • المعالجة كلها داخل الجهاز • بدون رفع لسيرفر</small></label>
 <input id="source" type="file" accept=".mp4,.mov,video/mp4,video/quicktime">
 <div id="details" hidden>
@@ -56,7 +65,7 @@ progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
 <p id="status" role="status" aria-live="polite">بانتظار اختيار الفيديو.</p>
 <progress id="progress" max="100" value="0" hidden></progress>
 <label class="agree"><input id="agree" type="checkbox"><span>أفهم أن مسار الصوت التجريبي غير صالح، وقد يسبب مشاكل توافق. أحتفظ بنسخة التصوير الأصلية.</span></label>
-<button class="btn" id="run" type="button" disabled>2. أضف المسار فقط — بدون إعادة ترميز</button>
+<button class="btn" id="run" type="button" disabled>3. أضف X9 فقط — بدون إعادة ترميز</button>
 </section>
 <section class="card ok" id="result" hidden>
 <h2>النسخة التجريبية جاهزة ✓</h2>
@@ -65,30 +74,45 @@ progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
 <button id="share" class="btn alt" type="button" hidden>مشاركة / حفظ في Files</button>
 <p class="note">بعد حفظ الملف، جرّبه محلياً ثم على TikTok. الأداة لا تدّعي أن TikTok سيحتفظ بدقة 4K أو 60fps بعد الرفع.</p>
 </section>
-<footer>HAMODYBR • Forge Dynamic X9 • <a href="./legacy-v8.html" style="color:#bfb5ff">Legacy V8</a></footer>
+<footer>HAMODYBR • Original X9 + Today Reference • <a href="./legacy-v8.html" style="color:#bfb5ff">Legacy V8</a></footer>
 </main>
 <script type="module">
-import {inspectForgeReadyFile,addForgeDynamicOutsideMdatFile} from './forge-track.mjs?v=10';
+import {inspectForgeReadyFile,addForgeDynamicOutsideMdatFile} from './forge-track.mjs?v=12';
+import {TODAY_PRESET,inspectTodaySource,createTodayReferenceFile} from './today-mode.mjs?v=1';
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
-let chosen=null,info=null,busy=false,serial=0,url=null,output=null;
+let chosen=null,info=null,busy=false,serial=0,url=null,output=null,mode='original';
 function report(text,kind=''){const e=$('status');e.textContent=text;e.className=kind;}
 function progress(n){$('progress').hidden=false;$('progress').value=n;}
 function clear(){output=null;$('result').hidden=true;if(url)URL.revokeObjectURL(url);url=null;}
 function refresh(){$('run').disabled=busy||!chosen||!info||!$('agree').checked;}
+function setMode(next){
+ if(busy||mode===next)return;
+ mode=next;clear();info=null;
+ $('modeOriginal').classList.toggle('active',mode==='original');
+ $('modeToday').classList.toggle('active',mode==='today');
+ $('modeDescription').textContent=mode==='original'
+  ?'Original + X9: نحافظ على الفيديو والصوت الأصليين ونضيف Dynamic X9 خارج mdat فقط.'
+  :'Today Reference: نعيد الترميز عمداً إلى 1080×1920 H.264، 59.94fps، هدف 34Mbps، Keyframe كل 0.5 ثانية، AAC 44.1kHz ثم Dynamic X9 خارج mdat.';
+ $('run').textContent=mode==='original'?'3. أضف X9 فقط — بدون إعادة ترميز':'3. أنشئ Today Reference + X9';
+ if($('source').files?.[0])inspectSelected();
+ else refresh();
+}
+$('modeOriginal').addEventListener('click',()=>setMode('original'));
+$('modeToday').addEventListener('click',()=>setMode('today'));
 $('agree').addEventListener('change',refresh);
-$('source').addEventListener('change',async()=>{
+
+async function inspectSelected(){
  const f=$('source').files?.[0],token=++serial;
  chosen=null;info=null;clear();$('details').hidden=true;$('progress').hidden=true;refresh();
  if(!f)return;
- const name=f.name||'video';
- $('fileName').textContent=name;
- if(!/\.(mp4|mov)$/i.test(name)){report('اختار ملف MOV أو MP4 أصلي. لا نغيّر الامتداد تلقائياً.','error');return;}
- progress(5);report('جاري فحص جداول الملف محلياً…');
+ const name=f.name||'video';$('fileName').textContent=name;
+ if(!/\.(mp4|mov)$/i.test(name)){report('اختار ملف MOV أو MP4.','error');return;}
+ progress(5);report(mode==='original'?'جاري فحص جداول الملف محلياً…':'جاري فحص قدرة الجهاز ومواصفات المصدر لـ Today Mode…');
  try{
-   await new Promise(resolve=>requestAnimationFrame(resolve));
-   const value=await inspectForgeReadyFile(f);
-   if(token!==serial)return;
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  if(mode==='original'){
+   const value=await inspectForgeReadyFile(f);if(token!==serial)return;
    chosen=f;info=value;
    $('container').textContent=name.toLowerCase().endsWith('.mov')?'MOV':'MP4';
    $('codec').textContent=String(value.videoCodec).toUpperCase();
@@ -98,54 +122,84 @@ $('source').addEventListener('change',async()=>{
    $('aac').textContent=value.samples.toLocaleString('en');
    $('forgePackets').textContent=(value.dynamicTailPackets||value.samples*9).toLocaleString('en')+' = AAC × 9';
    $('size').textContent=fmt(f.size);
-   $('details').hidden=false;progress(100);
-   $('run').textContent=value.alreadyProcessed?'حفظ الملف الموجود بدون تكرار Forge':'2. أضف المسار فقط — بدون إعادة ترميز';
-   report(value.alreadyProcessed?'الملف يحتوي المسار التجريبي مسبقاً؛ لن نضيفه مرة ثانية.':'جاهز: لا نغيّر دقة الصورة أو إطاراتها أو بيانات ترميزها.', 'success');
+   $('run').textContent=value.alreadyProcessed?'حفظ الملف الموجود بدون تكرار Forge':'3. أضف X9 فقط — بدون إعادة ترميز';
+   report(value.alreadyProcessed?'الملف يحتوي Forge مسبقاً؛ ما راح نضيفه مرة ثانية.':'جاهز: الصورة والصوت الأصليين ما راح ينضغطون من جديد.','success');
+  }else{
+   const value=await inspectTodaySource(f);if(token!==serial)return;
+   chosen=f;info=value;
+   $('container').textContent=name.toLowerCase().endsWith('.mov')?'MOV → MP4':'MP4 → MP4';
+   $('codec').textContent=String(value.codec||'unknown').toUpperCase()+' → AVC';
+   $('resolution').textContent=value.width+' × '+value.height+' → '+TODAY_PRESET.width+' × '+TODAY_PRESET.height;
+   $('fps').textContent=(value.frameRate?value.frameRate.toFixed(3):'؟')+' → '+TODAY_PRESET.frameRate.toFixed(3)+'fps';
+   $('frames').textContent='يعاد ترميزها';
+   $('aac').textContent=String(value.audioCodec||'audio').toUpperCase()+' → AAC 44.1kHz';
+   $('forgePackets').textContent='يُحسب بعد إنشاء AAC × 9';
+   $('size').textContent=fmt(f.size);
+   $('run').textContent='3. أنشئ Today Reference + X9';
+   const hdr=/hlg|pq|2084|b67/i.test(value.colorTransfer)?'HDR → SDR sRGB':'SDR → SDR';
+   report('جاهز: '+hdr+' • 1080×1920 • H.264 • 59.94fps • 34Mbps • AAC 44.1kHz ثم X9.','success');
+  }
+  $('details').hidden=false;progress(100);
  }catch(e){
-   if(token!==serial)return;
-   const message=e?.message||String(e);
-   const chosenLabel='الملف المختار: '+name+' ('+fmt(f.size)+'). ';
-   if(/Requires at least one AAC audio track; found 0 audio tracks/.test(message)){
-     report(chosenLabel+'ماكو أي مسار صوت داخل هذا الملف. أداة Forge تحتاج AAC أصلي حتى تنسخه؛ ما راح نضيف صوت صامت أو نغيّر الصورة بدون موافقتك. إذا تقصد Original.mov اللي فحصناه سابقاً، تأكد تختار الملف الأصلي من Files > Browse، مو نسخة مُصدّرة أو صامتة. '+message,'error');
-   }else if(/Requires at least one AAC audio track; found [1-9][0-9]* audio tracks/.test(message)){
-     report(chosenLabel+'أكو صوت، لكن ترميزه مو AAC (mp4a). ما نكدر ننسخ نفس مسار Forge من هذا المصدر بدون تحويل الصوت، ولهذا وقفنا. '+message,'error');
-   }else{
-     report(chosenLabel+'تعذّر إضافة المسار بدون تغيير المصدر: '+message+
-       ' • ماكو تحويل تلقائي، وما نعيد ترميز الفيديو.','error');
-   }
+  if(token!==serial)return;
+  const message=e?.message||String(e),chosenLabel='الملف المختار: '+name+' ('+fmt(f.size)+'). ';
+  if(mode==='original'&&/Requires at least one AAC audio track; found 0 audio tracks/.test(message))
+   report(chosenLabel+'ماكو مسار AAC أصلي لهذا الوضع. '+message,'error');
+  else if(mode==='original'&&/Requires at least one AAC audio track; found [1-9][0-9]* audio tracks/.test(message))
+   report(chosenLabel+'أكو صوت لكن مو AAC؛ Original Mode ما يحوله. '+message,'error');
+  else report(chosenLabel+message,'error');
  }finally{if(token===serial){$('progress').hidden=true;refresh();}}
-});
+}
+$('source').addEventListener('change',inspectSelected);
+
 $('run').addEventListener('click',async()=>{
  if(!chosen||!info||busy||!$('agree').checked)return;
- busy=true;clear();refresh();progress(15);
- report('جاري إنشاء Forge Dynamic X9 خارج mdat؛ بدون فك ترميز الصورة أو الصوت…');
+ busy=true;clear();refresh();
  try{
-   await new Promise(resolve=>requestAnimationFrame(resolve));
-   const {output:blob,report:metrics}=await addForgeDynamicOutsideMdatFile(chosen);
-   progress(85);output=blob;
+  let blob,metrics,filename,baseInfo=null;
+  if(mode==='original'){
+   progress(15);report('جاري إضافة Dynamic X9 خارج mdat بدون إعادة ترميز…');
+   ({output:blob,report:metrics}=await addForgeDynamicOutsideMdatFile(chosen));
    const extension=/\.mov$/i.test(chosen.name)?'.mov':'.mp4';
    const basename=chosen.name.replace(/\.(mov|mp4)$/i,'');
-   const filename=(basename||'video')+'-HAMODYBR-FORGE-X9'+extension;
-   url=URL.createObjectURL(blob);$('download').href=url;$('download').download=filename;
-   $('share').hidden=!(navigator.share&&navigator.canShare);
+   filename=(basename||'video')+'-HAMODYBR-ORIGINAL-X9'+extension;
+  }else{
+   progress(3);report('المرحلة 1/2: تحويل Today Reference محلياً… لا تغلق الصفحة.');
+   const base=await createTodayReferenceFile(chosen,f=>{
+    progress(3+Math.round(f*72));
+    report('المرحلة 1/2: Today Reference '+Math.round(f*100)+'% • 1080p H.264 / 59.94fps / AAC 44.1kHz');
+   });
+   progress(78);report('المرحلة 2/2: فحص الناتج وإضافة Dynamic X9 خارج mdat…');
+   baseInfo=await inspectForgeReadyFile(base.file);
+   ({output:blob,report:metrics}=await addForgeDynamicOutsideMdatFile(base.file));
+   const basename=chosen.name.replace(/\.(mov|mp4)$/i,'');
+   filename=(basename||'video')+'-HAMODYBR-TODAY-X9.mp4';
+  }
+  progress(92);output=blob;url=URL.createObjectURL(blob);
+  $('download').href=url;$('download').download=filename;
+  $('share').hidden=!(navigator.share&&navigator.canShare);
+  if(mode==='original'){
    $('report').textContent=metrics.alreadyProcessed
-     ?'الملف كان يحتوي Forge. تم إرجاعه بدون تغيير.'
-     :'الحجم '+fmt(chosen.size)+' → '+fmt(blob.size)+
-      ' • '+info.videoWidth+'×'+info.videoHeight+
-      ' • '+info.videoFps.toFixed(3)+'fps'+
-      ' • '+info.videoFrames+' إطار بدون إعادة ترميز'+
-      ' • نفس AAC الأصلي • '+metrics.addedTailPackets+' حزمة Forge = AAC × 9 • خارج mdat.';
-   $('result').hidden=false;progress(100);
-   report('اكتمل فحص التوقيت ووصف الصورة والصوت الأساسي؛ الملف جاهز للتجربة.','success');
- }catch(e){clear();report('أوقفنا المعالجة بأمان: '+(e?.message||String(e)),'error');}
+    ?'الملف كان يحتوي Forge وتم إرجاعه بدون تغيير.'
+    :'الحجم '+fmt(chosen.size)+' → '+fmt(blob.size)+' • '+info.videoWidth+'×'+info.videoHeight+
+     ' • '+info.videoFps.toFixed(3)+'fps • '+info.videoFrames+' إطار بدون إعادة ترميز • '+
+     metrics.addedTailPackets+' حزمة X9 خارج mdat.';
+  }else{
+   $('report').textContent='Today Reference جاهز • '+baseInfo.videoWidth+'×'+baseInfo.videoHeight+
+    ' • '+baseInfo.videoFps.toFixed(3)+'fps فعلي بالحاوية • H.264/AAC • '+
+    metrics.addedTailPackets+' حزمة X9 خارج mdat • الحجم النهائي '+fmt(blob.size)+
+    '. ملاحظة: نوع الـH.264/B-frames النهائي يتحكم به WebCodecs على الجهاز.';
+  }
+  $('result').hidden=false;progress(100);report('الملف جاهز للتجربة على TikTok.','success');
+ }catch(e){clear();report('أوقفنا العملية: '+(e?.message||String(e)),'error');}
  finally{busy=false;$('progress').hidden=true;refresh();}
 });
 $('share').addEventListener('click',async()=>{
  if(!output||!navigator.share)return;
- const f=new File([output],$('download').download,{type:output.type});
- try {
-   if(!navigator.canShare?.({files:[f]}))throw new Error('المشاركة غير مدعومة لهذا الحجم أو النوع');
-   await navigator.share({files:[f],title:'HAMODYBR Forge Original'});
+ const f=new File([output],$('download').download,{type:output.type||'video/mp4'});
+ try{
+  if(!navigator.canShare?.({files:[f]}))throw new Error('المشاركة غير مدعومة لهذا الحجم أو النوع');
+  await navigator.share({files:[f],title:'HAMODYBR TikTok Video Lab'});
  }catch(e){if(e?.name!=='AbortError')report('تعذرت المشاركة: '+e.message+'. استخدم حفظ الملف.','error');}
 });
 </script>
