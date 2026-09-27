@@ -34,7 +34,7 @@ progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
 <div class="brand">HAMODY<b>BR</b> / VIDEO LAB</div>
 <div class="eyebrow">ADD-ONLY • ORIGINAL STREAM COPY</div>
 <h1>أضف Forge لفيديوك الأصلي<br>بدون خسارة 60fps أو HDR</h1>
-<p>اختار الفيديو الأصلي من الآيفون. الأداة تضيف المسار التجريبي <b>داخل mdat</b>، وتحتفظ بحزم الفيديو والصوت الأصلية بدون إعادة ترميز أو تقليل الدقة أو الـbitrate.</p>
+<p>اختار الفيديو الأصلي من الآيفون. الأداة تضيف المسار التجريبي <b>خارج mdat</b> مثل النمط اللي رصدناه في Today.MP4، وتحتفظ بحزم الفيديو والصوت الأصلية بدون إعادة ترميز أو تقليل الدقة أو الـbitrate.</p>
 <div class="card warn"><strong>⚠️ تجربة وليست ضماناً لجودة TikTok</strong>
 <p class="note">مسار Forge الثاني يحتوي حزم AAC غير قابلة للفك عمداً. ممكن TikTok يرفضه، يغيّر طريقة المعالجة، أو يسبب تقطيعاً. احتفظ بالملف الأصلي. MOV يبقى MOV وMP4 يبقى MP4؛ ما نحذف مسارات بيانات كامرة الآيفون. لا نغيّر Dolby Vision أو HDR، لكن قبولها عند TikTok غير مضمون.</p></div>
 <section class="card">
@@ -50,7 +50,7 @@ progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
  <div class="stat"><span>إطارات الفيديو</span><strong id="frames">—</strong></div>
  <div class="stat"><span>حزم AAC الأصلي</span><strong id="aac">—</strong></div>
  <div class="stat"><span>الحجم الأصلي</span><strong id="size">—</strong></div>
- <div class="stat"><span>إضافة Forge</span><strong>6,912 packets</strong></div>
+ <div class="stat"><span>إضافة Forge الديناميكية</span><strong id="forgePackets">—</strong></div>
 </div>
 </div>
 <p id="status" role="status" aria-live="polite">بانتظار اختيار الفيديو.</p>
@@ -65,10 +65,10 @@ progress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
 <button id="share" class="btn alt" type="button" hidden>مشاركة / حفظ في Files</button>
 <p class="note">بعد حفظ الملف، جرّبه محلياً ثم على TikTok. الأداة لا تدّعي أن TikTok سيحتفظ بدقة 4K أو 60fps بعد الرفع.</p>
 </section>
-<footer>HAMODYBR • Forge Original Add Only • <a href="./legacy-v8.html" style="color:#bfb5ff">Legacy V8</a></footer>
+<footer>HAMODYBR • Forge Dynamic X9 • <a href="./legacy-v8.html" style="color:#bfb5ff">Legacy V8</a></footer>
 </main>
 <script type="module">
-import {inspectForgeReadyFile,addForgeInsideMdatFile} from './forge-track.mjs?v=9';
+import {inspectForgeReadyFile,addForgeDynamicOutsideMdatFile} from './forge-track.mjs?v=10';
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
 let chosen=null,info=null,busy=false,serial=0,url=null,output=null;
@@ -96,6 +96,7 @@ $('source').addEventListener('change',async()=>{
    $('fps').textContent=value.videoFps?value.videoFps.toFixed(3)+'fps':'غير متاح';
    $('frames').textContent=value.videoFrames.toLocaleString('en');
    $('aac').textContent=value.samples.toLocaleString('en');
+   $('forgePackets').textContent=(value.dynamicTailPackets||value.samples*9).toLocaleString('en')+' = AAC × 9';
    $('size').textContent=fmt(f.size);
    $('details').hidden=false;progress(100);
    $('run').textContent=value.alreadyProcessed?'حفظ الملف الموجود بدون تكرار Forge':'2. أضف المسار فقط — بدون إعادة ترميز';
@@ -117,14 +118,14 @@ $('source').addEventListener('change',async()=>{
 $('run').addEventListener('click',async()=>{
  if(!chosen||!info||busy||!$('agree').checked)return;
  busy=true;clear();refresh();progress(15);
- report('جاري إنشاء مسار Forge الثاني في mdat؛ بدون فك ترميز الصورة أو الصوت…');
+ report('جاري إنشاء Forge Dynamic X9 خارج mdat؛ بدون فك ترميز الصورة أو الصوت…');
  try{
    await new Promise(resolve=>requestAnimationFrame(resolve));
-   const {output:blob,report:metrics}=await addForgeInsideMdatFile(chosen);
+   const {output:blob,report:metrics}=await addForgeDynamicOutsideMdatFile(chosen);
    progress(85);output=blob;
    const extension=/\.mov$/i.test(chosen.name)?'.mov':'.mp4';
    const basename=chosen.name.replace(/\.(mov|mp4)$/i,'');
-   const filename=(basename||'video')+'-HAMODYBR-FORGE-ORIGINAL'+extension;
+   const filename=(basename||'video')+'-HAMODYBR-FORGE-X9'+extension;
    url=URL.createObjectURL(blob);$('download').href=url;$('download').download=filename;
    $('share').hidden=!(navigator.share&&navigator.canShare);
    $('report').textContent=metrics.alreadyProcessed
@@ -133,7 +134,7 @@ $('run').addEventListener('click',async()=>{
       ' • '+info.videoWidth+'×'+info.videoHeight+
       ' • '+info.videoFps.toFixed(3)+'fps'+
       ' • '+info.videoFrames+' إطار بدون إعادة ترميز'+
-      ' • نفس AAC الأصلي • '+metrics.addedTailPackets+' حزمة Forge داخل mdat.';
+      ' • نفس AAC الأصلي • '+metrics.addedTailPackets+' حزمة Forge = AAC × 9 • خارج mdat.';
    $('result').hidden=false;progress(100);
    report('اكتمل فحص التوقيت ووصف الصورة والصوت الأساسي؛ الملف جاهز للتجربة.','success');
  }catch(e){clear();report('أوقفنا المعالجة بأمان: '+(e?.message||String(e)),'error');}
