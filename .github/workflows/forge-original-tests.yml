@@ -4,6 +4,8 @@ on:
     paths:
       - 'forge-audio-lab/forge-track.mjs'
       - 'forge-audio-lab/index.html'
+      - 'forge-audio-lab/today-mode.mjs'
+      - 'forge-audio-lab/today-mode.test.mjs'
       - 'forge-audio-lab/original.html'
       - 'forge-audio-lab/forge-original.test.mjs'
       - '.github/workflows/forge-original-tests.yml'
@@ -23,5 +25,7 @@ jobs:
         run: |
           node --check forge-audio-lab/forge-track.mjs
           node --check forge-audio-lab/forge-original.test.mjs
-      - name: Test lossless MOV/MP4 packet copy and idempotency
-        run: node --test forge-audio-lab/forge-original.test.mjs
+          node --check forge-audio-lab/today-mode.mjs
+          node --check forge-audio-lab/today-mode.test.mjs
+      - name: Test lossless MOV/MP4 packet copy and Today preset
+        run: node --test forge-audio-lab/forge-original.test.mjs forge-audio-lab/today-mode.test.mjs
