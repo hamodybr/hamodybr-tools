@@ -6,7 +6,7 @@ import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {
- inspectForgeReadyFile,addForgeLikeTrackFile,addForgeInsideMdatFile,TAIL_COUNT
+ inspectForgeReadyFile,addForgeLikeTrackFile,addForgeInsideMdatFile,addForgeDynamicOutsideMdatFile,TAIL_COUNT,TAIL_MULTIPLIER
 } from './forge-track.mjs';
 
 function ffprobe(file, streamSelector) {
@@ -77,6 +77,42 @@ for (const [kind,hevc] of [['mp4',false],['mov',true]]) {
      assert.equal((await inspectForgeReadyFile(new File([await legacy.output.arrayBuffer()],'legacy.'+kind))).alreadyProcessed,true);
    });
 }
+
+
+test('dynamic Forge uses source AAC ×9 outside mdat and preserves original packets', {timeout:120000},async()=>{
+ const input=join(folder,'dynamic-x9-source.mp4'),dest=join(folder,'dynamic-x9-output.mp4');
+ generate(input,'mp4',false);
+ const bytes=readFileSync(input);
+ const source=new File([bytes],'dynamic-x9-source.mp4',{type:'video/mp4'});
+ const before=await inspectForgeReadyFile(source);
+ const expected=before.samples*TAIL_MULTIPLIER;
+ assert.equal(TAIL_MULTIPLIER,9);
+ assert.equal(before.dynamicTailPackets,expected);
+ const result=await addForgeDynamicOutsideMdatFile(source);
+ assert.equal(result.report.addedTailPackets,expected);
+ assert.equal(result.report.secondAudioSamples,before.samples*10);
+ assert.equal(result.report.tailOutsideMdat,true);
+ const outputBytes=Buffer.from(await result.output.arrayBuffer());
+ writeFileSync(dest,outputBytes);
+ const after=await inspectForgeReadyFile(new File([outputBytes],'dynamic-x9-output.mp4',{type:'video/mp4'}));
+ assert.equal(after.alreadyProcessed,true);
+ assert.equal(after.tailPackets,expected);
+ assert.equal(after.videoFrames,before.videoFrames);
+ assert.equal(after.videoFps,before.videoFps);
+ assert.equal(after.videoWidth,before.videoWidth);
+ assert.equal(after.videoHeight,before.videoHeight);
+ const streams=allStreams(dest);
+ assert.equal(streams.length,3);
+ assert.equal(+streams[2].nb_frames,before.samples*10);
+ for(const stream of ['v:0','a:0'])
+   assert.deepEqual(ffprobe(dest,stream),ffprobe(input,stream),'Original '+stream+' packets changed.');
+ const tailBytes=expected*8;
+ assert.equal(outputBytes.length-result.report.outputBytes,0);
+ assert.ok(tailBytes>0);
+ const tail=outputBytes.subarray(outputBytes.length-tailBytes);
+ for(let p=0;p<tail.length;p+=8)
+   assert.deepEqual([...tail.subarray(p,p+8)],[0,0,0,4,0,0,0,0]);
+});
 
 test('clear diagnosis of silent and non-AAC original sources; never touch video', {timeout:120000},async()=>{
  const silentPath=join(folder,'no-audio.mp4');

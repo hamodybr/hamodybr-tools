@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'forge-audio-lab/forge-track.mjs'
+      - 'forge-audio-lab/index.html'
       - 'forge-audio-lab/original.html'
       - 'forge-audio-lab/forge-original.test.mjs'
       - '.github/workflows/forge-original-tests.yml'
