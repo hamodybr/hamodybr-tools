@@ -65,7 +65,8 @@ export async function inspectTodaySource(file,library=null){
   const height=await video.getCodedHeight();
   const duration=await video.computeDuration();
   const color=await video.getColorSpace();
-  const frameRate=await video.computePacketStats?.().then?.(x=>x?.averagePacketRate).catch?.(()=>null);
+  let frameRate=null;
+  try{frameRate=(await video.computeFrameRateMetrics()).bestGuessFrameRate;}catch{}
   if(!Number.isFinite(duration)||duration<=0)fail('مدة الفيديو غير صالحة.');
   if(duration>MAX_DURATION_SECONDS)fail('Today Mode الحالي محدود إلى '+MAX_DURATION_SECONDS+' ثانية لحماية ذاكرة الآيفون.');
   if(!(await video.canDecode()))fail('Safari على هذا الجهاز ما يقدر يفك ترميز فيديو '+codec+'.');
