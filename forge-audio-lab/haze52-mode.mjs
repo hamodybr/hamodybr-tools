@@ -40,6 +40,23 @@ async function packetHash(M,track){
   }
   return {hash,total,count,key:hash+':'+total+':'+count};
 }
+export async function copyPrimaryAacPacketsExact(M,sourceAudio,audioSource,onPacket=()=>{}){
+  const decoderConfig=await sourceAudio.getDecoderConfig();
+  if(!decoderConfig||!decoderConfig.codec||!decoderConfig.numberOfChannels||!decoderConfig.sampleRate)
+    fail('تعذر قراءة AAC decoder config الأصلي.');
+  const sink=new M.EncodedPacketSink(sourceAudio);
+  let count=0,total=0,hash=2166136261,first=true;
+  for await(const packet of sink.packets()){
+    const meta=first?{decoderConfig}:undefined;
+    await audioSource.add(packet,meta);
+    first=false;count++;total+=packet.data.byteLength;
+    for(const b of packet.data)hash=Math.imul(hash^b,16777619)>>>0;
+    onPacket(count);
+  }
+  if(!count)fail('AAC الأصلي ما يحتوي packets.');
+  audioSource.close();
+  return {hash,total,count,key:hash+':'+total+':'+count,decoderConfig};
+}
 async function frameRateOf(video){
   try{return (await video.computeFrameRateMetrics()).bestGuessFrameRate;}
   catch{return null;}
@@ -105,20 +122,44 @@ export async function createHaze52Replica(file,onProgress=()=>{},M=null){
     allowTransformationMetadata:true,
   }:undefined;
 
+  // IMPORTANT: Conversion never owns the AAC track. Even a "copy" conversion can
+  // normalize AAC packet boundaries. Haze's analyzed output preserved every primary
+  // AAC packet payload, so we drive the AAC output track manually packet-by-packet.
   const conversion=await M.Conversion.init({
     input,output,tracks:'primary',
     copy:{mode:'preferred',shiftTolerance:0},
     video:videoOptions,
-    // No audio options: compatible AAC must be packet-copied.
+    audio:{discard:true},
     tags:{},
     showWarnings:false,
+    composable:true,
   });
-  if(!conversion.isValid||!conversion.utilizedTracks.includes(sourceVideo)||!conversion.utilizedTracks.includes(sourceAudio))
-    fail('تعذر بناء Haze Replica مع الفيديو والصوت الأساسيين.');
-  if(conversion.discardedTracks.some(x=>x.track===sourceVideo||x.track===sourceAudio))
-    fail('المحرك حاول يحذف مسار أساسي؛ أوقفنا العملية.');
-  conversion.onProgress=f=>onProgress(Math.max(0,Math.min(0.68,f*0.68)),'refinery');
-  await conversion.execute();
+  if(!conversion.utilizedTracks.includes(sourceVideo))
+    fail('تعذر بناء مسار الفيديو لـ Haze Replica.');
+  if(conversion.discardedTracks.some(x=>x.track===sourceVideo))
+    fail('المحرك حاول يحذف الفيديو؛ أوقفنا العملية.');
+
+  const decoderConfig=await sourceAudio.getDecoderConfig();
+  if(!decoderConfig)fail('تعذر قراءة AAC decoder config الأصلي.');
+  const exactAudioSource=new M.EncodedAudioPacketSource('aac');
+  output.addAudioTrack(exactAudioSource,{
+    decoderConfig,
+    languageCode:await sourceAudio.getLanguageCode(),
+    disposition:await sourceAudio.getDisposition(),
+  });
+
+  conversion.onProgress=f=>onProgress(Math.max(0,Math.min(0.62,f*0.62)),'refinery');
+  await output.start();
+  const audioCopyPromise=copyPrimaryAacPacketsExact(M,sourceAudio,exactAudioSource,count=>{
+    if((count&31)===0)onProgress(0.64,'aac-copy');
+  });
+  const [audioCopy] = await Promise.all([
+    audioCopyPromise,
+    conversion.execute(),
+  ]);
+  if(audioCopy.key!==sourceAudioHash.key)
+    fail('AAC packet-copy الداخلي ما طابق المصدر؛ تم إيقاف Haze Replica.');
+  await output.finalize();
   if(!target.buffer?.byteLength)fail('Refinery ما أنتج MP4.');
 
   const baseName=(file.name||'video').replace(/\.(mov|mp4)$/i,'');
@@ -131,7 +172,7 @@ export async function createHaze52Replica(file,onProgress=()=>{},M=null){
   if(!outVideo||await outVideo.getCodec()!=='avc')fail('Refinery output مو H.264.');
   if(!outAudio||await outAudio.getCodec()!=='aac')fail('Refinery output فقد AAC.');
   const outAudioHash=await packetHash(M,outAudio);
-  if(outAudioHash.key!==sourceAudioHash.key)fail('AAC الأصلي تغيّر أثناء Refinery؛ تم إيقاف Haze Replica.');
+  if(outAudioHash.key!==sourceAudioHash.key)fail('AAC الأصلي ما طابق بعد التغليف اليدوي؛ تم إيقاف Haze Replica.');
   if(sourceVideoHash){
     const outVideoHash=await packetHash(M,outVideo);
     if(outVideoHash.key!==sourceVideoHash.key)fail('H.264 الأصلي تغيّر رغم أن المفروض Stream Copy.');
