@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {File} from 'node:buffer';
+import {readFileSync} from 'node:fs';
 import {HAZE52_PRESET,inspectHaze52Source,copyPrimaryAacPacketsExact} from './haze52-mode.mjs';
 
 function fakeLibrary({videoCodec='hevc',audioCodec='aac',fps=120,width=3840,height=2160}={}){
@@ -87,4 +88,13 @@ test('manual AAC mux path forwards exact packets and decoder config without tran
  assert.equal(added[1].packet,packets[1]);
  assert.deepEqual(added[0].meta,{decoderConfig});
  assert.equal(added[1].meta,undefined);
+});
+
+test('composable Haze conversion owns no tags; metadata is cleared on Output before start',()=>{
+ const src=readFileSync(new URL('./haze52-mode.mjs',import.meta.url),'utf8');
+ const init=src.slice(src.indexOf('const conversion=await M.Conversion.init'),src.indexOf('if(!conversion.utilizedTracks'));
+ assert.doesNotMatch(init,/tags\s*:/);
+ const set=src.indexOf('output.setMetadataTags({})');
+ const start=src.indexOf('await output.start()');
+ assert.ok(set>0&&start>set,'metadata must be set directly on Output before start');
 });
