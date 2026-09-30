@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {File} from 'node:buffer';
-import {HAZE52_PRESET,inspectHaze52Source} from './haze52-mode.mjs';
+import {HAZE52_PRESET,inspectHaze52Source,copyPrimaryAacPacketsExact} from './haze52-mode.mjs';
 
 function fakeLibrary({videoCodec='hevc',audioCodec='aac',fps=120,width=3840,height=2160}={}){
  const video={
@@ -61,4 +61,30 @@ test('non-AAC primary audio is rejected to preserve the Haze AAC-copy invariant'
  const M=fakeLibrary({audioCodec:'opus'});
  const f=new File([new Uint8Array(1024)],'bad.mp4',{type:'video/mp4'});
  await assert.rejects(inspectHaze52Source(f,M),/الصوت الأصلي مو AAC/);
+});
+
+test('manual AAC mux path forwards exact packets and decoder config without transcoding',async()=>{
+ const packets=[
+  {data:new Uint8Array([1,2,3]),timestamp:0,duration:0.021333,type:'key'},
+  {data:new Uint8Array([4,5]),timestamp:0.021333,duration:0.021333,type:'key'},
+ ];
+ const decoderConfig={codec:'mp4a.40.2',numberOfChannels:2,sampleRate:48000,description:new Uint8Array([17,144])};
+ const track={getDecoderConfig:async()=>decoderConfig};
+ class EncodedPacketSink{
+  constructor(t){assert.equal(t,track);}
+  async *packets(){for(const p of packets)yield p;}
+ }
+ const added=[];let closed=false;
+ const source={
+  async add(packet,meta){added.push({packet,meta});},
+  close(){closed=true;},
+ };
+ const result=await copyPrimaryAacPacketsExact({EncodedPacketSink},track,source);
+ assert.equal(result.count,2);
+ assert.equal(result.total,5);
+ assert.equal(closed,true);
+ assert.equal(added[0].packet,packets[0]);
+ assert.equal(added[1].packet,packets[1]);
+ assert.deepEqual(added[0].meta,{decoderConfig});
+ assert.equal(added[1].meta,undefined);
 });
