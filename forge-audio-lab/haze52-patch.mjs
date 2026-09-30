@@ -20,7 +20,14 @@ function concat(parts){
 }
 function makeBox(name,payload){
  const out=new Uint8Array(8+payload.length);w32(out,0,out.length);
- out.set(enc.encode(name),4);out.set(payload,8);return out;
+ const typeBytes=enc.encode(name);
+ if(typeBytes.length!==4)fail('MP4 box type must be exactly 4 bytes: '+name);
+ out.set(typeBytes,4);out.set(payload,8);return out;
+}
+function makeBoxTypeBytes(typeBytes,payload){
+ if(!(typeBytes instanceof Uint8Array)||typeBytes.length!==4)fail('MP4 box type must be 4 raw bytes');
+ const out=new Uint8Array(8+payload.length);w32(out,0,out.length);
+ out.set(typeBytes,4);out.set(payload,8);return out;
 }
 function boxes(a,start=0,end=a.length){
  const out=[];let pos=start;
@@ -75,7 +82,8 @@ function hazeUdta(tag=HAZE_ENCODER_TAG){
  // locale remains zero
  dataPayload.set(text,8);
  const data=makeBox('data',dataPayload);
- const too=makeBox('©too',data);
+ // QuickTime metadata key is raw 0xA9 0x74 0x6F 0x6F (©too), not UTF-8 C2 A9.
+ const too=makeBoxTypeBytes(new Uint8Array([0xa9,0x74,0x6f,0x6f]),data);
  const ilst=makeBox('ilst',too);
  const metaPayload=concat([new Uint8Array(4),hdlr,ilst]);
  return makeBox('udta',makeBox('meta',metaPayload));
