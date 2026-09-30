@@ -6,6 +6,10 @@ on:
       - 'forge-audio-lab/index.html'
       - 'forge-audio-lab/today-mode.mjs'
       - 'forge-audio-lab/today-mode.test.mjs'
+      - 'forge-audio-lab/haze52-patch.test.mjs'
+      - 'forge-audio-lab/haze52-mode.test.mjs'
+      - 'forge-audio-lab/haze52-patch.mjs'
+      - 'forge-audio-lab/haze52-mode.mjs'
       - 'forge-audio-lab/original.html'
       - 'forge-audio-lab/forge-original.test.mjs'
       - '.github/workflows/forge-original-tests.yml'
@@ -27,5 +31,9 @@ jobs:
           node --check forge-audio-lab/forge-original.test.mjs
           node --check forge-audio-lab/today-mode.mjs
           node --check forge-audio-lab/today-mode.test.mjs
+          node --check forge-audio-lab/haze52-mode.mjs
+          node --check forge-audio-lab/haze52-patch.mjs
+          node --check forge-audio-lab/haze52-mode.test.mjs
+          node --check forge-audio-lab/haze52-patch.test.mjs
       - name: Test lossless MOV/MP4 packet copy and Today preset
-        run: node --test forge-audio-lab/forge-original.test.mjs forge-audio-lab/today-mode.test.mjs
+        run: node --test forge-audio-lab/forge-original.test.mjs forge-audio-lab/today-mode.test.mjs forge-audio-lab/haze52-mode.test.mjs forge-audio-lab/haze52-patch.test.mjs
