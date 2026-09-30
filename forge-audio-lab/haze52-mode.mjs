@@ -130,7 +130,6 @@ export async function createHaze52Replica(file,onProgress=()=>{},M=null){
     copy:{mode:'preferred',shiftTolerance:0},
     video:videoOptions,
     audio:{discard:true},
-    tags:{},
     showWarnings:false,
     composable:true,
   });
@@ -147,6 +146,9 @@ export async function createHaze52Replica(file,onProgress=()=>{},M=null){
     languageCode:await sourceAudio.getLanguageCode(),
     disposition:await sourceAudio.getDisposition(),
   });
+  // A composable Conversion cannot own metadata. Clear source metadata directly
+  // on the Output before start(), matching Haze's clean-container stage.
+  output.setMetadataTags({});
 
   conversion.onProgress=f=>onProgress(Math.max(0,Math.min(0.62,f*0.62)),'refinery');
   await output.start();
