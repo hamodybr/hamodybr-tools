@@ -106,3 +106,15 @@ test('public UI exposes only the stable Haze optimizer path',()=>{
  assert.doesNotMatch(html,/modeOriginal|modeToday|Original \+ X9|Today Reference/);
  assert.doesNotMatch(html,/forge-track\.mjs|today-mode\.mjs/);
 });
+
+test('polished public UI keeps the workflow simple and mobile-safe',()=>{
+ const html=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+ assert.match(html,/id="previewVideo"/);
+ assert.match(html,/id="step1"/);
+ assert.match(html,/id="step4"/);
+ assert.match(html,/id="newVideo"/);
+ assert.match(html,/playsinline/);
+ assert.match(html,/prefers-reduced-motion/);
+ assert.match(html,/المعالجة تتم على جهازك/);
+ assert.doesNotMatch(html,/modeOriginal|modeToday|Original \+ X9|Today Reference/);
+});
