@@ -28,8 +28,11 @@ h1{font-size:clamp(29px,8vw,42px);line-height:1.15;margin:0 0 12px;font-weight:8
 .pick-icon svg{width:24px;height:24px}
 .pick-title{font-size:17px;font-weight:750}
 .pick-sub{font-size:13px;color:var(--muted);margin-top:6px}
-.file-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:13px 14px;background:var(--card2);border:1px solid var(--line);border-radius:16px}
-.file-icon{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#222831;display:grid;place-items:center}
+.file-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:16px}
+.preview{position:relative;flex:0 0 58px;width:58px;height:58px;border-radius:12px;overflow:hidden;background:#222831}
+.preview video{width:100%;height:100%;object-fit:cover;display:block}
+.preview-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:16px;background:#222831}
+.preview.ready .preview-fallback{display:none}
 .file-info{min-width:0;flex:1}
 .file-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:right}
 .file-meta{font-size:12px;color:var(--muted);margin-top:4px}
@@ -38,16 +41,25 @@ button,.action{width:100%;border:0;border-radius:16px;min-height:54px;font:inher
 .primary{margin-top:14px;background:var(--accent);color:#090b0d}
 .primary:active:not(:disabled),.action:active{transform:scale(.985)}
 .primary:disabled{opacity:.35;cursor:not-allowed}
-.progress-wrap{margin-top:16px;padding:4px 2px 0}
+.progress-wrap{margin-top:17px;padding:4px 2px 0}
 .progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
 .progress-label{color:#dce1e7}
 .progress-pct{color:var(--muted);direction:ltr}
 .track{height:7px;margin-top:10px;background:#232831;border-radius:999px;overflow:hidden}
 .bar{height:100%;width:0;background:var(--good);border-radius:inherit;transition:width .22s ease}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:12px}
+.step{font-size:10px;color:#606975;text-align:center;white-space:nowrap;transition:.2s ease}
+.step.active{color:#dce1e7}.step.done{color:var(--good)}
+.step-dot{width:6px;height:6px;border-radius:50%;background:#343b45;margin:0 auto 5px;transition:.2s ease}
+.step.active .step-dot{background:#dce1e7;box-shadow:0 0 0 4px #ffffff0b}
+.step.done .step-dot{background:var(--good)}
 .status{font-size:13px;color:var(--muted);line-height:1.65;margin-top:12px;text-align:center}
 .status.error{color:var(--bad)}
 .result{margin-top:14px;padding:18px;background:#101b16;border:1px solid #244d38;border-radius:18px;text-align:center}
-.done-icon{width:44px;height:44px;margin:0 auto 10px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:22px;font-weight:900}
+.done-icon{width:50px;height:50px;margin:0 auto 12px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:24px;font-weight:900;animation:pop .35s ease both}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.result-actions{display:grid;gap:9px}
+.new-video{margin-top:9px;background:transparent!important;border:1px solid #2b343e!important;color:#b8c0ca!important}
 .result h2{font-size:18px;margin:0 0 5px}
 .result p{font-size:13px;color:#9eb5a8;margin:0 0 15px}
 .action{background:var(--good);color:#07120c}
@@ -57,8 +69,10 @@ button,.action{width:100%;border:0;border-radius:16px;min-height:54px;font:inher
 footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spacing:.04em}
 [hidden]{display:none!important}
 @media(max-width:420px){
- .app{padding-top:30px}.panel{border-radius:21px;padding:13px}.picker{min-height:155px}
+ .app{padding-top:28px}.brand{margin-bottom:28px}.hero{margin-bottom:23px}.panel{border-radius:21px;padding:13px}.picker{min-height:150px}
+ h1{font-size:32px}.hero p{font-size:14px}.steps{gap:2px}.step{font-size:9px}
 }
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -85,7 +99,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
     </label>
 
     <div id="fileCard" class="file-card" hidden>
-      <div class="file-icon">▶</div>
+      <div id="preview" class="preview"><video id="previewVideo" muted playsinline preload="metadata"></video><span class="preview-fallback">▶</span></div>
       <div class="file-info">
         <div id="fileName" class="file-name"></div>
         <div id="fileMeta" class="file-meta"></div>
@@ -101,6 +115,12 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
         <span id="progressPct" class="progress-pct">0%</span>
       </div>
       <div class="track"><div id="bar" class="bar"></div></div>
+      <div class="steps" aria-hidden="true">
+        <div id="step1" class="step"><div class="step-dot"></div>تجهيز</div>
+        <div id="step2" class="step"><div class="step-dot"></div>معالجة</div>
+        <div id="step3" class="step"><div class="step-dot"></div>تحسين</div>
+        <div id="step4" class="step"><div class="step-dot"></div>إنهاء</div>
+      </div>
     </div>
 
     <div id="status" class="status">اختار فيديو للبدء.</div>
@@ -109,8 +129,11 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
       <div class="done-icon">✓</div>
       <h2>الفيديو جاهز</h2>
       <p id="resultMeta">تم التجهيز بنجاح.</p>
-      <a id="download" class="action" href="#">حفظ الفيديو</a>
-      <button id="share" class="secondary" type="button" hidden>مشاركة</button>
+      <div class="result-actions">
+        <a id="download" class="action" href="#">حفظ الفيديو</a>
+        <button id="share" class="secondary" type="button" hidden>مشاركة</button>
+      </div>
+      <button id="newVideo" class="secondary new-video" type="button">تحسين فيديو جديد</button>
     </div>
   </section>
 
@@ -127,17 +150,26 @@ import {inspectHaze52Source,createHaze52Replica} from './haze52-mode.mjs?v=4';
 
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
-let chosen=null,info=null,busy=false,downloadUrl=null,outputFile=null,serial=0;
+let chosen=null,info=null,busy=false,downloadUrl=null,previewUrl=null,outputFile=null,serial=0;
 
 function setStatus(message,error=false){
   $('status').textContent=message;
   $('status').classList.toggle('error',error);
+}
+function updateSteps(n){
+  const current=n<28?1:n<70?2:n<90?3:4;
+  for(let i=1;i<=4;i++){
+    const el=$('step'+i);
+    el.classList.toggle('done',i<current||n>=100);
+    el.classList.toggle('active',i===current&&n<100);
+  }
 }
 function setProgress(value,label){
   const n=Math.max(0,Math.min(100,Math.round(value)));
   $('progressWrap').hidden=false;
   $('bar').style.width=n+'%';
   $('progressPct').textContent=n+'%';
+  updateSteps(n);
   if(label)$('progressLabel').textContent=label;
 }
 function clearResult(){
@@ -149,6 +181,19 @@ function resetProgress(){
   $('progressWrap').hidden=true;
   $('bar').style.width='0%';
   $('progressPct').textContent='0%';
+  for(let i=1;i<=4;i++)$('step'+i).className='step';
+}
+function clearPreview(){
+  $('previewVideo').removeAttribute('src');
+  $('preview').classList.remove('ready');
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+}
+function showPreview(file){
+  clearPreview();
+  previewUrl=URL.createObjectURL(file);
+  const video=$('previewVideo');
+  video.src=previewUrl;
+  video.onloadeddata=()=>{if(previewUrl) $('preview').classList.add('ready');};
 }
 function refresh(){
   $('run').disabled=busy||!chosen||!info;
@@ -165,7 +210,7 @@ function friendlyStage(stage){
 async function inspectSelected(){
   const file=$('source').files?.[0];
   const token=++serial;
-  chosen=null;info=null;clearResult();resetProgress();
+  chosen=null;info=null;clearResult();resetProgress();clearPreview();
   $('fileCard').hidden=true;
   refresh();
   if(!file){setStatus('اختار فيديو للبدء.');return;}
@@ -173,6 +218,7 @@ async function inspectSelected(){
   $('fileName').textContent=file.name||'video';
   $('fileMeta').textContent=fmt(file.size)+' • جاري الفحص…';
   $('fileCard').hidden=false;
+  showPreview(file);
   setStatus('جاري فحص الفيديو…');
   setProgress(8,'جاري فحص الفيديو…');
 
@@ -184,7 +230,7 @@ async function inspectSelected(){
     const fps=Number.isFinite(value.frameRate)?Math.round(value.frameRate)+' FPS':'Video';
     $('fileMeta').textContent=fmt(file.size)+' • '+value.width+'×'+value.height+' • '+fps;
     resetProgress();
-    setStatus('جاهز للتحسين.');
+    setStatus('جاهز. اضغط تحسين الفيديو للبدء.');
   }catch(e){
     if(token!==serial)return;
     resetProgress();
@@ -214,13 +260,25 @@ $('run').addEventListener('click',async()=>{
     $('resultMeta').textContent=fmt(outputFile.size)+' • جاهز للحفظ أو المشاركة';
     $('result').hidden=false;
     setProgress(100,'اكتمل');
-    setStatus('تم تجهيز الفيديو بنجاح.');
+    setStatus('اكتملت المعالجة بنجاح.');
   }catch(e){
     resetProgress();
     setStatus('تعذر تجهيز الفيديو: '+(e?.message||String(e)),true);
   }finally{
     busy=false;refresh();
   }
+});
+
+$('newVideo').addEventListener('click',()=>{
+  if(busy)return;
+  ++serial;
+  chosen=null;info=null;
+  $('source').value='';
+  $('fileCard').hidden=true;
+  clearPreview();clearResult();resetProgress();
+  setStatus('اختار فيديو للبدء.');
+  refresh();
+  window.scrollTo({top:0,behavior:'smooth'});
 });
 
 $('share').addEventListener('click',async()=>{
@@ -231,6 +289,10 @@ $('share').addEventListener('click',async()=>{
   }catch(e){
     if(e?.name!=='AbortError')setStatus('تعذرت المشاركة. استخدم زر حفظ الفيديو.',true);
   }
+});
+window.addEventListener('pagehide',()=>{
+  if(downloadUrl)URL.revokeObjectURL(downloadUrl);
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
 });
 </script>
 </body>
