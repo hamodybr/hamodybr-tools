@@ -118,3 +118,19 @@ test('polished public UI keeps the workflow simple and mobile-safe',()=>{
  assert.match(html,/المعالجة تتم على جهازك/);
  assert.doesNotMatch(html,/modeOriginal|modeToday|Original \+ X9|Today Reference/);
 });
+
+test('HAMODYBR Video product shell has manifest, accessible progress and no experiment UI',()=>{
+ const html=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+ const manifest=JSON.parse(readFileSync(new URL('./manifest.webmanifest',import.meta.url),'utf8'));
+ const icon=readFileSync(new URL('./app-icon.svg',import.meta.url),'utf8');
+ assert.match(html,/<title>HAMODYBR Video<\/title>/);
+ assert.match(html,/rel="manifest"/);
+ assert.match(html,/role="progressbar"/);
+ assert.match(html,/aria-live="polite"/);
+ assert.match(html,/dragenter/);
+ assert.match(html,/inspectFile/);
+ assert.equal(manifest.name,'HAMODYBR Video');
+ assert.equal(manifest.display,'standalone');
+ assert.match(icon,/<svg/);
+ assert.doesNotMatch(html,/Original \+ X9|Today Reference|Haze 5\.2 Replica/);
+});
