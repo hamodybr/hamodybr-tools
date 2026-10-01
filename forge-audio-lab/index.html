@@ -3,247 +3,235 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#100d1b">
-<meta name="robots" content="noindex,nofollow">
-<title>HAMODYBR • TikTok Video Lab</title>
+<meta name="theme-color" content="#0b0d10">
+<title>HAMODYBR Video Optimizer</title>
 <style>
-:root{color-scheme:dark;font:16px/1.75 system-ui,-apple-system,"Segoe UI",sans-serif;background:#100d1b;color:#f8f8fc}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#48337b 0%,transparent 44%),#100d1b}
-main{max-width:760px;margin:0 auto;padding:18px 16px 76px}
-.brand{font:900 13px system-ui;letter-spacing:.13em;color:#d7d0ff;direction:ltr;text-align:left}
-.brand b{color:#94f0dc}h1{line-height:1.27;font-size:clamp(29px,7vw,43px);margin:14px 0}
-p{color:#c7c4d5;margin:8px 0 15px}.eyebrow{display:inline-block;border:1px solid #836fe1;color:#e6dfff;border-radius:24px;padding:3px 12px;font-size:12px}
-.card{border:1px solid #51456e;background:#1c1930;border-radius:20px;padding:20px;margin:17px 0;box-shadow:0 12px 35px #0002}
-.warn{background:#302516;border-color:#8a6935}.ok{background:#15372f;border-color:#427e6a}.note{font-size:13px;color:#bdc0d2}
-.file{display:block;border:2px dashed #8e7cc3;background:#292341;padding:27px 16px;border-radius:16px;text-align:center;cursor:pointer;margin:17px 0}
-.file strong{display:block;font-size:17px;color:white}.file small{display:block;overflow-wrap:anywhere;color:#c9c4dd}
-input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
-.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
-.stat{background:#141127;border:1px solid #302c48;border-radius:13px;padding:11px;overflow-wrap:anywhere}
-.stat span{display:block;font-size:12px;color:#b9b5ca}.stat strong{font:700 15px/1.5 system-ui;direction:ltr;unicode-bidi:isolate;display:block}
-label.agree{display:flex;align-items:flex-start;gap:11px;font-size:13px;margin:15px 0}
-label.agree input{margin-top:8px;transform:scale(1.2);accent-color:#9f8af9}
-.btn{border:0;border-radius:14px;padding:14px 20px;color:white;background:#7866ec;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;width:100%;margin-top:12px}
-.btn:disabled{opacity:.45;cursor:not-allowed}.btn.alt{background:#344c56;border:1px solid #6e9d9a}
-#status{overflow-wrap:anywhere;min-height:35px}.error{color:#ffb6ac!important}.success{color:#8df4d0!important}
-.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.mode{appearance:none;border:1px solid #5b5277;background:#171428;color:#cfcadd;border-radius:15px;padding:14px 10px;font:800 14px/1.45 system-ui;cursor:pointer}.mode small{display:block;font-weight:500;color:#a9a4b9;margin-top:4px}.mode.active{border-color:#9c89ff;background:#342c58;color:#fff;box-shadow:0 0 0 1px #9c89ff55 inset}.mode.today.active{border-color:#6ccbb7;background:#173f37;box-shadow:0 0 0 1px #6ccbb755 inset}.mode.haze.active{border-color:#ffb65d;background:#4a2e16;box-shadow:0 0 0 1px #ffb65d55 inset}.preset{background:#121526;border:1px solid #373b55;border-radius:13px;padding:12px;margin-top:12px;font-size:13px;color:#c8c9d8}
-@media(max-width:640px){.modes{grid-template-columns:1fr}.mode{text-align:right}}\nprogress{width:100%;height:13px;accent-color:#92e7d5;margin-top:10px}
-[hidden]{display:none!important}footer{text-align:center;color:#938ca9;font-size:12px}
+:root{
+  color-scheme:dark;
+  --bg:#0b0d10;--card:#12151a;--card2:#171b21;--line:#262c34;
+  --text:#f5f7fa;--muted:#949ca8;--accent:#f5f7fa;--good:#69d59b;--bad:#ff7a7a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
+body{min-height:100dvh;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)}
+.app{width:min(100%,560px);margin:0 auto;padding:44px 0 32px}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:34px;font-weight:800;letter-spacing:.08em;font-size:13px}
+.brand-mark{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 18px #69d59b80}
+.hero{text-align:center;margin-bottom:28px}
+h1{font-size:clamp(29px,8vw,42px);line-height:1.15;margin:0 0 12px;font-weight:850;letter-spacing:-.035em}
+.hero p{margin:0 auto;color:var(--muted);font-size:15px;line-height:1.7;max-width:390px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px;box-shadow:0 18px 55px #0005}
+.picker{position:relative;display:flex;min-height:170px;border:1.5px dashed #39414c;border-radius:18px;background:var(--card2);align-items:center;justify-content:center;text-align:center;padding:24px;overflow:hidden;transition:.18s ease}
+.picker:active{transform:scale(.992);border-color:#66717f}
+.picker input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.pick-icon{width:48px;height:48px;margin:0 auto 14px;border-radius:15px;background:#222831;display:grid;place-items:center}
+.pick-icon svg{width:24px;height:24px}
+.pick-title{font-size:17px;font-weight:750}
+.pick-sub{font-size:13px;color:var(--muted);margin-top:6px}
+.file-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:13px 14px;background:var(--card2);border:1px solid var(--line);border-radius:16px}
+.file-icon{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#222831;display:grid;place-items:center}
+.file-info{min-width:0;flex:1}
+.file-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:right}
+.file-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.check{flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:13px;font-weight:900}
+button,.action{width:100%;border:0;border-radius:16px;min-height:54px;font:inherit;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:.18s ease}
+.primary{margin-top:14px;background:var(--accent);color:#090b0d}
+.primary:active:not(:disabled),.action:active{transform:scale(.985)}
+.primary:disabled{opacity:.35;cursor:not-allowed}
+.progress-wrap{margin-top:16px;padding:4px 2px 0}
+.progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+.progress-label{color:#dce1e7}
+.progress-pct{color:var(--muted);direction:ltr}
+.track{height:7px;margin-top:10px;background:#232831;border-radius:999px;overflow:hidden}
+.bar{height:100%;width:0;background:var(--good);border-radius:inherit;transition:width .22s ease}
+.status{font-size:13px;color:var(--muted);line-height:1.65;margin-top:12px;text-align:center}
+.status.error{color:var(--bad)}
+.result{margin-top:14px;padding:18px;background:#101b16;border:1px solid #244d38;border-radius:18px;text-align:center}
+.done-icon{width:44px;height:44px;margin:0 auto 10px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:22px;font-weight:900}
+.result h2{font-size:18px;margin:0 0 5px}
+.result p{font-size:13px;color:#9eb5a8;margin:0 0 15px}
+.action{background:var(--good);color:#07120c}
+.secondary{margin-top:9px;background:#20262d;color:var(--text)}
+.privacy{display:flex;align-items:center;justify-content:center;gap:7px;color:#737c88;font-size:12px;margin:18px 0 0;text-align:center}
+.privacy svg{width:14px;height:14px;flex:0 0 auto}
+footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spacing:.04em}
+[hidden]{display:none!important}
+@media(max-width:420px){
+ .app{padding-top:30px}.panel{border-radius:21px;padding:13px}.picker{min-height:155px}
+}
 </style>
 </head>
-<body><main>
-<div class="brand">HAMODY<b>BR</b> / VIDEO LAB</div>
-<div class="eyebrow">ORIGINAL X9 • TODAY • HAZE 5.2 REPLICA</div>
-<h1>اختبر ثلاث مسارات للجودة<br>على TikTok</h1>
-<p>هسه عندك <b>Original + X9</b>، و<b>Today Reference</b>، ووضع <b>Haze 5.2 Replica</b> المبني على تحليل ملف Haze الحقيقي قبل/بعد.</p>
-<div class="card warn"><strong>⚠️ مختبر تجريبي — مو ضمان لجودة TikTok</strong>
-<p class="note">Original Mode ما يعيد ترميز الصورة أو الصوت. Today Mode يعيد الترميز إلى 1080×1920 H.264 ~59.94fps. Haze 5.2 Replica يحاول يطابق الملف اللي حللناه: H.264 30fps ~25Mbps عند الحاجة، AAC الأصلي Packet Copy، Dynamic X9 خارج mdat، mvhd duration = unknown، إزالة metadata، isom/iso2/avc1/mp41، وfree قبل الـtail. نوع H.264/B-frames النهائي يبقى مرتبط بEncoder المتصفح.</p></div>
-<section class="card">
-<h2>1. اختار طريقة التجربة</h2>
-<div class="modes">
-<button id="modeOriginal" class="mode active" type="button">Original + X9<small>بدون إعادة ترميز • يحافظ على المصدر</small></button>
-<button id="modeToday" class="mode today" type="button">Today Reference<small>1080p H.264 ~59.94fps • 34Mbps</small></button>\n<button id="modeHaze" class="mode haze" type="button">Haze 5.2 Replica<small>Clean MP4 • AVC30 • X9 • Unknown duration</small></button>
-</div>
-<div id="modeDescription" class="preset">Original + X9: نحافظ على الفيديو والصوت الأصليين ونضيف Dynamic X9 خارج mdat فقط.</div>
-</section>
-<section class="card">
-<h2>2. اختار الفيديو الأصلي</h2>
-<label for="source" class="file"><strong id="fileName">اختيار MOV أو MP4</strong><small>من Files / Browse • المعالجة كلها داخل الجهاز • بدون رفع لسيرفر</small></label>
-<input id="source" type="file" accept=".mp4,.mov,video/mp4,video/quicktime">
-<div id="details" hidden>
-<div class="stats">
- <div class="stat"><span>الحاوية الأصلية</span><strong id="container">—</strong></div>
- <div class="stat"><span>ترميز الفيديو</span><strong id="codec">—</strong></div>
- <div class="stat"><span>الدقة المسجلة</span><strong id="resolution">—</strong></div>
- <div class="stat"><span>معدل الإطارات (متوسط)</span><strong id="fps">—</strong></div>
- <div class="stat"><span>إطارات الفيديو</span><strong id="frames">—</strong></div>
- <div class="stat"><span>حزم AAC الأصلي</span><strong id="aac">—</strong></div>
- <div class="stat"><span>الحجم الأصلي</span><strong id="size">—</strong></div>
- <div class="stat"><span>إضافة Forge الديناميكية</span><strong id="forgePackets">—</strong></div>
-</div>
-</div>
-<p id="status" role="status" aria-live="polite">بانتظار اختيار الفيديو.</p>
-<progress id="progress" max="100" value="0" hidden></progress>
-<label class="agree"><input id="agree" type="checkbox"><span>أفهم أن مسار الصوت التجريبي غير صالح، وقد يسبب مشاكل توافق. أحتفظ بنسخة التصوير الأصلية.</span></label>
-<button class="btn" id="run" type="button" disabled>3. أضف X9 فقط — بدون إعادة ترميز</button>
-</section>
-<section class="card ok" id="result" hidden>
-<h2>النسخة التجريبية جاهزة ✓</h2>
-<p id="report"></p>
-<a id="download" class="btn" download>حفظ الملف التجريبي</a>
-<button id="share" class="btn alt" type="button" hidden>مشاركة / حفظ في Files</button>
-<p class="note">بعد حفظ الملف، جرّبه محلياً ثم على TikTok. الأداة لا تدّعي أن TikTok سيحتفظ بدقة 4K أو 60fps بعد الرفع.</p>
-</section>
-<footer>HAMODYBR • Original X9 + Today + Haze 5.2 Replica • <a href="./legacy-v8.html" style="color:#bfb5ff">Legacy V8</a></footer>
+<body>
+<main class="app">
+  <div class="brand"><span class="brand-mark"></span><span>HAMODYBR</span></div>
+
+  <section class="hero">
+    <h1>حسّن الفيديو<br>بخطوة واحدة</h1>
+    <p>اختار الفيديو، وخلي الأداة تجهزه تلقائيًا بأفضل إعداداتنا المجربة.</p>
+  </section>
+
+  <section class="panel">
+    <label class="picker" id="picker">
+      <input id="source" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
+      <span>
+        <span class="pick-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
+          </svg>
+        </span>
+        <span class="pick-title">اختار فيديو</span>
+        <span class="pick-sub">MOV أو MP4</span>
+      </span>
+    </label>
+
+    <div id="fileCard" class="file-card" hidden>
+      <div class="file-icon">▶</div>
+      <div class="file-info">
+        <div id="fileName" class="file-name"></div>
+        <div id="fileMeta" class="file-meta"></div>
+      </div>
+      <div class="check">✓</div>
+    </div>
+
+    <button id="run" class="primary" type="button" disabled>تحسين الفيديو</button>
+
+    <div id="progressWrap" class="progress-wrap" hidden>
+      <div class="progress-top">
+        <span id="progressLabel" class="progress-label">جاري التجهيز…</span>
+        <span id="progressPct" class="progress-pct">0%</span>
+      </div>
+      <div class="track"><div id="bar" class="bar"></div></div>
+    </div>
+
+    <div id="status" class="status">اختار فيديو للبدء.</div>
+
+    <div id="result" class="result" hidden>
+      <div class="done-icon">✓</div>
+      <h2>الفيديو جاهز</h2>
+      <p id="resultMeta">تم التجهيز بنجاح.</p>
+      <a id="download" class="action" href="#">حفظ الفيديو</a>
+      <button id="share" class="secondary" type="button" hidden>مشاركة</button>
+    </div>
+  </section>
+
+  <div class="privacy">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/></svg>
+    <span>المعالجة تتم على جهازك — الفيديو لا يتم رفعه للسيرفر</span>
+  </div>
+
+  <footer>HAMODYBR VIDEO OPTIMIZER</footer>
 </main>
+
 <script type="module">
-import {inspectForgeReadyFile,addForgeDynamicOutsideMdatFile} from './forge-track.mjs?v=13';
-import {TODAY_PRESET,inspectTodaySource,createTodayReferenceFile} from './today-mode.mjs?v=2';
-import {HAZE52_PRESET,inspectHaze52Source,createHaze52Replica} from './haze52-mode.mjs?v=3';
+import {inspectHaze52Source,createHaze52Replica} from './haze52-mode.mjs?v=4';
 
 const $=id=>document.getElementById(id);
-const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(2)+' MB';
-let chosen=null,info=null,busy=false,serial=0,url=null,output=null,mode='original';
+const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
+let chosen=null,info=null,busy=false,downloadUrl=null,outputFile=null,serial=0;
 
-function report(text,kind=''){const e=$('status');e.textContent=text;e.className=kind;}
-function progress(n){$('progress').hidden=false;$('progress').value=n;}
-function clear(){output=null;$('result').hidden=true;if(url)URL.revokeObjectURL(url);url=null;}
-function refresh(){$('run').disabled=busy||!chosen||!info||!$('agree').checked;}
-function modeText(){
- if(mode==='original')return 'Original + X9: نحافظ على الفيديو والصوت الأصليين ونضيف Dynamic X9 خارج mdat فقط.';
- if(mode==='today')return 'Today Reference: 1080×1920 H.264، 59.94fps، هدف 34Mbps، AAC 44.1kHz ثم Dynamic X9 خارج mdat.';
- return 'Haze 5.2 Replica: Clean faststart MP4، H.264 30fps ~25Mbps عند الحاجة، AAC الأصلي Packet Copy، X9 خارج mdat، movie duration unknown، metadata stripped، encoder tag + free قبل tail.';
+function setStatus(message,error=false){
+  $('status').textContent=message;
+  $('status').classList.toggle('error',error);
 }
-function setMode(next){
- if(busy||mode===next)return;
- mode=next;clear();info=null;
- $('modeOriginal').classList.toggle('active',mode==='original');
- $('modeToday').classList.toggle('active',mode==='today');
- $('modeHaze').classList.toggle('active',mode==='haze');
- $('modeDescription').textContent=modeText();
- $('run').textContent=mode==='original'?'3. أضف X9 فقط — بدون إعادة ترميز':
-  mode==='today'?'3. أنشئ Today Reference + X9':'3. أنشئ Haze 5.2 Replica';
- if($('source').files?.[0])inspectSelected(); else refresh();
+function setProgress(value,label){
+  const n=Math.max(0,Math.min(100,Math.round(value)));
+  $('progressWrap').hidden=false;
+  $('bar').style.width=n+'%';
+  $('progressPct').textContent=n+'%';
+  if(label)$('progressLabel').textContent=label;
 }
-$('modeOriginal').addEventListener('click',()=>setMode('original'));
-$('modeToday').addEventListener('click',()=>setMode('today'));
-$('modeHaze').addEventListener('click',()=>setMode('haze'));
-$('agree').addEventListener('change',refresh);
+function clearResult(){
+  $('result').hidden=true;
+  outputFile=null;
+  if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}
+}
+function resetProgress(){
+  $('progressWrap').hidden=true;
+  $('bar').style.width='0%';
+  $('progressPct').textContent='0%';
+}
+function refresh(){
+  $('run').disabled=busy||!chosen||!info;
+  $('source').disabled=busy;
+}
+function friendlyStage(stage){
+  if(stage==='refinery')return 'جاري تجهيز الفيديو…';
+  if(stage==='aac-copy')return 'جاري تجهيز الصوت…';
+  if(stage==='x9')return 'جاري التحسين…';
+  if(stage==='container')return 'اللمسات الأخيرة…';
+  return 'جاري التحقق…';
+}
 
 async function inspectSelected(){
- const f=$('source').files?.[0],token=++serial;
- chosen=null;info=null;clear();$('details').hidden=true;$('progress').hidden=true;refresh();
- if(!f)return;
- const name=f.name||'video';$('fileName').textContent=name;
- if(!/\.(mp4|mov)$/i.test(name)){report('اختار ملف MOV أو MP4.','error');return;}
- progress(5);
- report(mode==='original'?'جاري فحص جداول الملف محلياً…':
-   mode==='today'?'جاري فحص قدرة الجهاز ومواصفات المصدر لـ Today Mode…':
-   'جاري فحص المصدر لـ Haze 5.2 Replica…');
- try{
-  await new Promise(resolve=>requestAnimationFrame(resolve));
-  if(mode==='original'){
-   const value=await inspectForgeReadyFile(f);if(token!==serial)return;
-   chosen=f;info=value;
-   $('container').textContent=name.toLowerCase().endsWith('.mov')?'MOV':'MP4';
-   $('codec').textContent=String(value.videoCodec).toUpperCase();
-   $('resolution').textContent=value.videoWidth+' × '+value.videoHeight;
-   $('fps').textContent=value.videoFps?value.videoFps.toFixed(3)+'fps':'غير متاح';
-   $('frames').textContent=value.videoFrames.toLocaleString('en');
-   $('aac').textContent=value.samples.toLocaleString('en');
-   $('forgePackets').textContent=(value.dynamicTailPackets||value.samples*9).toLocaleString('en')+' = AAC × 9';
-   $('size').textContent=fmt(f.size);
-   $('run').textContent=value.alreadyProcessed?'حفظ الملف الموجود بدون تكرار Forge':'3. أضف X9 فقط — بدون إعادة ترميز';
-   report(value.alreadyProcessed?'الملف يحتوي Forge مسبقاً؛ ما راح نضيفه مرة ثانية.':'جاهز: الصورة والصوت الأصليين ما راح ينضغطون من جديد.','success');
-  }else if(mode==='today'){
-   const value=await inspectTodaySource(f);if(token!==serial)return;
-   chosen=f;info=value;
-   $('container').textContent=name.toLowerCase().endsWith('.mov')?'MOV → MP4':'MP4 → MP4';
-   $('codec').textContent=String(value.codec||'unknown').toUpperCase()+' → AVC';
-   $('resolution').textContent=value.width+' × '+value.height+' → '+TODAY_PRESET.width+' × '+TODAY_PRESET.height;
-   $('fps').textContent=(value.frameRate?value.frameRate.toFixed(3):'؟')+' → '+TODAY_PRESET.frameRate.toFixed(3)+'fps';
-   $('frames').textContent='يعاد ترميزها';
-   $('aac').textContent=String(value.audioCodec||'audio').toUpperCase()+' → AAC 44.1kHz';
-   $('forgePackets').textContent='يُحسب بعد إنشاء AAC × 9';
-   $('size').textContent=fmt(f.size);
-   $('run').textContent='3. أنشئ Today Reference + X9';
-   const hdr=/hlg|pq|2084|b67/i.test(value.colorTransfer)?'HDR → SDR sRGB':'SDR → SDR';
-   report('جاهز: '+hdr+' • 1080×1920 • H.264 • 59.94fps • 34Mbps • AAC 44.1kHz ثم X9.','success');
-  }else{
-   const value=await inspectHaze52Source(f);if(token!==serial)return;
-   chosen=f;info=value;
-   $('container').textContent=(name.toLowerCase().endsWith('.mov')?'MOV':'MP4')+' → Clean MP4';
-   $('codec').textContent=value.requiresTranscode
-    ?String(value.codec).toUpperCase()+' → AVC'
-    :'AVC → AVC (stream copy)';
-   $('resolution').textContent=value.width+' × '+value.height+' محفوظة';
-   $('fps').textContent=(value.frameRate?value.frameRate.toFixed(3):'؟')+' → '+(value.requiresTranscode?'30.000':'30.000')+'fps';
-   $('frames').textContent=value.requiresTranscode?'H.264 30fps جديد':'H.264 frames محفوظة';
-   $('aac').textContent='AAC الأصلي • Packet Copy';
-   $('forgePackets').textContent='Dynamic X9 ثم Haze container patch';
-   $('size').textContent=fmt(f.size);
-   $('run').textContent='3. أنشئ Haze 5.2 Replica';
-   const action=value.requiresTranscode
-    ?'راح يعيد ترميز الفيديو فقط إلى H.264 30fps ~25Mbps'
-    :'الفيديو H.264/30fps؛ راح نحاول نحافظ على packet payload نفسه';
-   report('جاهز: '+action+' • AAC بدون إعادة ترميز • metadata cleanup • unknown mvhd • X9.','success');
+  const file=$('source').files?.[0];
+  const token=++serial;
+  chosen=null;info=null;clearResult();resetProgress();
+  $('fileCard').hidden=true;
+  refresh();
+  if(!file){setStatus('اختار فيديو للبدء.');return;}
+
+  $('fileName').textContent=file.name||'video';
+  $('fileMeta').textContent=fmt(file.size)+' • جاري الفحص…';
+  $('fileCard').hidden=false;
+  setStatus('جاري فحص الفيديو…');
+  setProgress(8,'جاري فحص الفيديو…');
+
+  try{
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    const value=await inspectHaze52Source(file);
+    if(token!==serial)return;
+    chosen=file;info=value;
+    const fps=Number.isFinite(value.frameRate)?Math.round(value.frameRate)+' FPS':'Video';
+    $('fileMeta').textContent=fmt(file.size)+' • '+value.width+'×'+value.height+' • '+fps;
+    resetProgress();
+    setStatus('جاهز للتحسين.');
+  }catch(e){
+    if(token!==serial)return;
+    resetProgress();
+    $('fileMeta').textContent=fmt(file.size);
+    setStatus(e?.message||'هذا الفيديو غير مدعوم.',true);
+  }finally{
+    if(token===serial)refresh();
   }
-  $('details').hidden=false;progress(100);
- }catch(e){
-  if(token!==serial)return;
-  const message=e?.message||String(e),prefix='الملف المختار: '+name+' ('+fmt(f.size)+'). ';
-  if(mode==='original'&&/Requires at least one AAC audio track; found 0 audio tracks/.test(message))
-   report(prefix+'ماكو مسار AAC أصلي لهذا الوضع. '+message,'error');
-  else if(mode==='original'&&/Requires at least one AAC audio track; found [1-9][0-9]* audio tracks/.test(message))
-   report(prefix+'أكو صوت لكن مو AAC؛ Original Mode ما يحوله. '+message,'error');
-  else report(prefix+message,'error');
- }finally{if(token===serial){$('progress').hidden=true;refresh();}}
 }
 $('source').addEventListener('change',inspectSelected);
 
 $('run').addEventListener('click',async()=>{
- if(!chosen||!info||busy||!$('agree').checked)return;
- busy=true;clear();refresh();
- try{
-  let blob,metrics,filename,baseInfo=null;
-  if(mode==='original'){
-   progress(15);report('جاري إضافة Dynamic X9 خارج mdat بدون إعادة ترميز…');
-   ({output:blob,report:metrics}=await addForgeDynamicOutsideMdatFile(chosen));
-   const ext=/\.mov$/i.test(chosen.name)?'.mov':'.mp4';
-   filename=chosen.name.replace(/\.(mov|mp4)$/i,'')+'-HAMODYBR-ORIGINAL-X9'+ext;
-  }else if(mode==='today'){
-   progress(3);report('المرحلة 1/2: تحويل Today Reference محلياً…');
-   const base=await createTodayReferenceFile(chosen,f=>{
-    progress(3+Math.round(f*72));
-    report('المرحلة 1/2: Today Reference '+Math.round(f*100)+'% • 1080p H.264 / 59.94fps');
-   });
-   progress(78);report('المرحلة 2/2: إضافة Dynamic X9 خارج mdat…');
-   baseInfo=await inspectForgeReadyFile(base.file);
-   ({output:blob,report:metrics}=await addForgeDynamicOutsideMdatFile(base.file));
-   filename=chosen.name.replace(/\.(mov|mp4)$/i,'')+'-HAMODYBR-TODAY-X9.mp4';
-  }else{
-   progress(2);report('Haze 5.2 Replica: Refinery يبدأ…');
-   const result=await createHaze52Replica(chosen,(f,stage)=>{
-    progress(Math.max(2,Math.round(f*100)));
-    const label=stage==='refinery'?'Refinery: تجهيز H.264/MP4 + AAC copy':
-      stage==='x9'?'Patch: Dynamic X9':
-      stage==='container'?'Container: unknown duration + metadata cleanup':'Final validation';
-    report('Haze 5.2 Replica • '+label+' • '+Math.round(f*100)+'%');
-   });
-   blob=result.file;metrics=result.report;filename=result.file.name;
+  if(!chosen||!info||busy)return;
+  busy=true;clearResult();refresh();
+  setProgress(1,'جاري البدء…');
+  setStatus('لا تغلق الصفحة أثناء تجهيز الفيديو.');
+
+  try{
+    const result=await createHaze52Replica(chosen,(fraction,stage)=>{
+      setProgress(fraction*100,friendlyStage(stage));
+    });
+    outputFile=result.file;
+    downloadUrl=URL.createObjectURL(outputFile);
+    $('download').href=downloadUrl;
+    $('download').download=outputFile.name;
+    $('share').hidden=!(navigator.share&&navigator.canShare);
+    $('resultMeta').textContent=fmt(outputFile.size)+' • جاهز للحفظ أو المشاركة';
+    $('result').hidden=false;
+    setProgress(100,'اكتمل');
+    setStatus('تم تجهيز الفيديو بنجاح.');
+  }catch(e){
+    resetProgress();
+    setStatus('تعذر تجهيز الفيديو: '+(e?.message||String(e)),true);
+  }finally{
+    busy=false;refresh();
   }
-  progress(96);output=blob;url=URL.createObjectURL(blob);
-  $('download').href=url;$('download').download=filename;
-  $('share').hidden=!(navigator.share&&navigator.canShare);
-  if(mode==='original'){
-   $('report').textContent=metrics.alreadyProcessed?'الملف كان يحتوي Forge وتم إرجاعه بدون تغيير.':
-    'الحجم '+fmt(chosen.size)+' → '+fmt(blob.size)+' • '+info.videoWidth+'×'+info.videoHeight+
-    ' • '+info.videoFps.toFixed(3)+'fps • '+metrics.addedTailPackets+' حزمة X9 خارج mdat.';
-  }else if(mode==='today'){
-   $('report').textContent='Today Reference جاهز • '+baseInfo.videoWidth+'×'+baseInfo.videoHeight+
-    ' • '+baseInfo.videoFps.toFixed(3)+'fps • H.264/AAC • '+metrics.addedTailPackets+
-    ' حزمة X9 خارج mdat • الحجم '+fmt(blob.size)+'.';
-  }else{
-   $('report').textContent='Haze 5.2 Replica جاهز • '+metrics.width+'×'+metrics.height+
-    ' • '+(metrics.videoTranscoded?'H.264 30fps / هدف 25Mbps':'H.264 packet copy')+
-    ' • AAC packets محفوظة: '+metrics.sourceAacPackets+
-    ' • decoy = '+metrics.dynamicDecoySamples+' samples • total declared = '+metrics.declaredTotalAudioSamples+
-    ' • X9 tail خارج mdat • mvhd = '+metrics.movieDurationSentinel+
-    ' • metadata removed • '+metrics.compatibleBrands+
-    ' • free قبل tail • الحجم '+fmt(blob.size)+'.';
-  }
-  $('result').hidden=false;progress(100);report('الملف جاهز للتجربة على TikTok.','success');
- }catch(e){clear();report('أوقفنا العملية: '+(e?.message||String(e)),'error');}
- finally{busy=false;$('progress').hidden=true;refresh();}
 });
 
 $('share').addEventListener('click',async()=>{
- if(!output||!navigator.share)return;
- const f=new File([output],$('download').download,{type:output.type||'video/mp4'});
- try{
-  if(!navigator.canShare?.({files:[f]}))throw new Error('المشاركة غير مدعومة لهذا الحجم أو النوع');
-  await navigator.share({files:[f],title:'HAMODYBR TikTok Video Lab'});
- }catch(e){if(e?.name!=='AbortError')report('تعذرت المشاركة: '+e.message+'. استخدم حفظ الملف.','error');}
+  if(!outputFile||!navigator.share)return;
+  try{
+    if(!navigator.canShare?.({files:[outputFile]}))throw new Error('المشاركة غير مدعومة لهذا الملف');
+    await navigator.share({files:[outputFile],title:'HAMODYBR Video'});
+  }catch(e){
+    if(e?.name!=='AbortError')setStatus('تعذرت المشاركة. استخدم زر حفظ الفيديو.',true);
+  }
 });
 </script>
-</body></html>
+</body>
+</html>
