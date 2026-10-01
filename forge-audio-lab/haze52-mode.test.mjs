@@ -98,3 +98,11 @@ test('composable Haze conversion owns no tags; metadata is cleared on Output bef
  const start=src.indexOf('await output.start()');
  assert.ok(set>0&&start>set,'metadata must be set directly on Output before start');
 });
+
+test('public UI exposes only the stable Haze optimizer path',()=>{
+ const html=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+ assert.match(html,/createHaze52Replica/);
+ assert.match(html,/تحسين الفيديو/);
+ assert.doesNotMatch(html,/modeOriginal|modeToday|Original \+ X9|Today Reference/);
+ assert.doesNotMatch(html,/forge-track\.mjs|today-mode\.mjs/);
+});
