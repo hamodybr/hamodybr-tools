@@ -4,7 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0d10">
-<title>HAMODYBR Video Optimizer</title>
+<meta name="description" content="HAMODYBR Video — simple on-device video optimization.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HAMODYBR Video">
+<link rel="manifest" href="./manifest.webmanifest?v=1">
+<link rel="icon" href="./app-icon.svg" type="image/svg+xml">
+<title>HAMODYBR Video</title>
 <style>
 :root{
   color-scheme:dark;
@@ -15,14 +21,15 @@
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
 body{min-height:100dvh;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)}
 .app{width:min(100%,560px);margin:0 auto;padding:44px 0 32px}
-.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:34px;font-weight:800;letter-spacing:.08em;font-size:13px}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:34px;font-weight:800;letter-spacing:.06em;font-size:13px}
+.brand-copy{display:flex;align-items:baseline;gap:7px}.brand-sub{font-weight:600;color:#737c88;letter-spacing:.02em;font-size:11px}
 .brand-mark{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 18px #69d59b80}
 .hero{text-align:center;margin-bottom:28px}
 h1{font-size:clamp(29px,8vw,42px);line-height:1.15;margin:0 0 12px;font-weight:850;letter-spacing:-.035em}
 .hero p{margin:0 auto;color:var(--muted);font-size:15px;line-height:1.7;max-width:390px}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px;box-shadow:0 18px 55px #0005}
 .picker{position:relative;display:flex;min-height:170px;border:1.5px dashed #39414c;border-radius:18px;background:var(--card2);align-items:center;justify-content:center;text-align:center;padding:24px;overflow:hidden;transition:.18s ease}
-.picker:active{transform:scale(.992);border-color:#66717f}
+.picker:active{transform:scale(.992);border-color:#66717f}.picker.drag{border-color:var(--good);background:#17201c;box-shadow:0 0 0 3px #69d59b12 inset}
 .picker input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
 .pick-icon{width:48px;height:48px;margin:0 auto 14px;border-radius:15px;background:#222831;display:grid;place-items:center}
 .pick-icon svg{width:24px;height:24px}
@@ -53,7 +60,7 @@ button,.action{width:100%;border:0;border-radius:16px;min-height:54px;font:inher
 .step-dot{width:6px;height:6px;border-radius:50%;background:#343b45;margin:0 auto 5px;transition:.2s ease}
 .step.active .step-dot{background:#dce1e7;box-shadow:0 0 0 4px #ffffff0b}
 .step.done .step-dot{background:var(--good)}
-.status{font-size:13px;color:var(--muted);line-height:1.65;margin-top:12px;text-align:center}
+.status{font-size:13px;color:var(--muted);line-height:1.65;margin-top:12px;text-align:center;min-height:21px}
 .status.error{color:var(--bad)}
 .result{margin-top:14px;padding:18px;background:#101b16;border:1px solid #244d38;border-radius:18px;text-align:center}
 .done-icon{width:50px;height:50px;margin:0 auto 12px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:24px;font-weight:900;animation:pop .35s ease both}
@@ -77,15 +84,15 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
 </head>
 <body>
 <main class="app">
-  <div class="brand"><span class="brand-mark"></span><span>HAMODYBR</span></div>
+  <div class="brand"><span class="brand-mark"></span><span class="brand-copy"><span>HAMODYBR Video</span><span class="brand-sub">Optimizer</span></span></div>
 
   <section class="hero">
-    <h1>حسّن الفيديو<br>بخطوة واحدة</h1>
-    <p>اختار الفيديو، وخلي الأداة تجهزه تلقائيًا بأفضل إعداداتنا المجربة.</p>
+    <h1>فيديو جاهز للنشر<br>بخطوة واحدة</h1>
+    <p>اختار الفيديو واضغط تحسين. الباقي يصير تلقائيًا على جهازك.</p>
   </section>
 
   <section class="panel">
-    <label class="picker" id="picker">
+    <label class="picker" id="picker" tabindex="0" aria-label="اختيار فيديو">
       <input id="source" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
       <span>
         <span class="pick-icon">
@@ -109,7 +116,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
 
     <button id="run" class="primary" type="button" disabled>تحسين الفيديو</button>
 
-    <div id="progressWrap" class="progress-wrap" hidden>
+    <div id="progressWrap" class="progress-wrap" role="progressbar" aria-label="تقدم معالجة الفيديو" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
       <div class="progress-top">
         <span id="progressLabel" class="progress-label">جاري التجهيز…</span>
         <span id="progressPct" class="progress-pct">0%</span>
@@ -123,7 +130,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
       </div>
     </div>
 
-    <div id="status" class="status">اختار فيديو للبدء.</div>
+    <div id="status" class="status" role="status" aria-live="polite">اختار فيديو للبدء.</div>
 
     <div id="result" class="result" hidden>
       <div class="done-icon">✓</div>
@@ -142,7 +149,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
     <span>المعالجة تتم على جهازك — الفيديو لا يتم رفعه للسيرفر</span>
   </div>
 
-  <footer>HAMODYBR VIDEO OPTIMIZER</footer>
+  <footer>HAMODYBR VIDEO</footer>
 </main>
 
 <script type="module">
@@ -169,6 +176,7 @@ function setProgress(value,label){
   $('progressWrap').hidden=false;
   $('bar').style.width=n+'%';
   $('progressPct').textContent=n+'%';
+  $('progressWrap').setAttribute('aria-valuenow',String(n));
   updateSteps(n);
   if(label)$('progressLabel').textContent=label;
 }
@@ -181,6 +189,7 @@ function resetProgress(){
   $('progressWrap').hidden=true;
   $('bar').style.width='0%';
   $('progressPct').textContent='0%';
+  $('progressWrap').setAttribute('aria-valuenow','0');
   for(let i=1;i<=4;i++)$('step'+i).className='step';
 }
 function clearPreview(){
@@ -207,8 +216,7 @@ function friendlyStage(stage){
   return 'جاري التحقق…';
 }
 
-async function inspectSelected(){
-  const file=$('source').files?.[0];
+async function inspectFile(file){
   const token=++serial;
   chosen=null;info=null;clearResult();resetProgress();clearPreview();
   $('fileCard').hidden=true;
@@ -240,7 +248,23 @@ async function inspectSelected(){
     if(token===serial)refresh();
   }
 }
-$('source').addEventListener('change',inspectSelected);
+$('source').addEventListener('change',()=>inspectFile($('source').files?.[0]));
+
+const picker=$('picker');
+for(const event of ['dragenter','dragover']){
+  picker.addEventListener(event,e=>{e.preventDefault();if(!busy)picker.classList.add('drag');});
+}
+for(const event of ['dragleave','drop']){
+  picker.addEventListener(event,e=>{e.preventDefault();picker.classList.remove('drag');});
+}
+picker.addEventListener('drop',e=>{
+  if(busy)return;
+  const file=e.dataTransfer?.files?.[0];
+  if(file)inspectFile(file);
+});
+picker.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&!busy){e.preventDefault();$('source').click();}
+});
 
 $('run').addEventListener('click',async()=>{
   if(!chosen||!info||busy)return;
