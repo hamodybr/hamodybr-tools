@@ -89,7 +89,7 @@ const bytes = (n) =>
 const time = (s) => (Number.isFinite(s) ? `${s.toFixed(3)} s` : "Unknown");
 const selectedMode = () =>
   document.querySelector('input[name="mode"]:checked')?.value ||
-  "losslessTiming";
+  "losslessRemux";
 const even = (n) => Math.max(2, Math.round(n / 2) * 2);
 const colorValue = (obj, ...keys) => {
   for (const key of keys) {
@@ -222,7 +222,7 @@ function setPreset(mode) {
       ["Resolution", "Original • no resize"],
       ["Frame rate", "Original • no conversion"],
       ["Duration", "Original timing"],
-      ["Goal", "Smaller file • minimal visual change"],
+      ["Goal", "Smaller file • quality not guaranteed"],
     ];
   else
     rows = [
@@ -329,7 +329,7 @@ function refreshRun() {
   if (mode === "losslessTiming") {
     if (timingOk) {
       analysis.className = "note ok";
-      analysis.innerHTML = `<b>Recommended Lossless Timing ready ✓</b> ${sourceFps.toFixed(3)} FPS → ${(sourceFps / 2).toFixed(3)} FPS timing. Encoded video/audio payloads remain unchanged.`;
+      analysis.innerHTML = `<b>Special-purpose Lossless Timing ready ✓</b> ${sourceFps.toFixed(3)} FPS → ${(sourceFps / 2).toFixed(3)} FPS timing. Encoded video/audio payloads remain unchanged.`;
     } else {
       analysis.className = "note bad";
       analysis.innerHTML = `<b>Lossless Timing expects a ~60 FPS source.</b> Detected ${sourceFps.toFixed(3)} FPS. Choose Lossless Remux, Smart Compress or Quality Lab for this file.`;
@@ -346,7 +346,7 @@ function refreshRun() {
       : codecOk
         ? `<b>Smart Compress will re-encode the video.</b> Target about ${plan.targetMbps.toFixed(1)} Mb/s using ${plan.codec.toUpperCase()}, with an estimated size near ${bytes(plan.estimatedBytes)}. Resolution, FPS, duration and rotation remain unchanged.${sourceIsHdr() ? " HDR preservation will be verified before the result is accepted." : ""}`
         : `<b>${plan.codec.toUpperCase()} encoder is unavailable.</b> Choose Auto or another codec.`;
-    compressWarning.innerHTML = `<b>${compressLevel.options[compressLevel.selectedIndex].text}.</b> No resize, crop, FPS conversion or visual filter. Estimated reduction: about ${Math.round((1 - plan.estimatedBytes / inputFile.size) * 100)}%. Re-encoding can still cause a very small visual difference.`;
+    compressWarning.innerHTML = `<b>${compressLevel.options[compressLevel.selectedIndex].text}.</b> No resize, crop, FPS conversion or visual filter. Estimated reduction: about ${Math.round((1 - plan.estimatedBytes / inputFile.size) * 100)}%. Re-encoding may cause visible loss of fine detail, even with Gentle. Compare the output with the original before upload.`;
   } else {
     const adjustments = [];
     if (outputSize.value !== "original") adjustments.push("1080 output");
