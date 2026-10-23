@@ -121,3 +121,30 @@ for(const apacFirst of [true,false])test('Spatial Audio selects existing AAC wit
   await assert.rejects(prepareSpatialAacFallback(new File([noAac],'only-apac.mov')),/AAC/);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+for(const kind of ['meta','mdta','tmcd'])test('ordinary MOV with '+kind+' metadata and no APAC preserves A/V',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'istanbul-metadata-'));
+ try{
+  const p=join(dir,'source.mov');
+  execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','testsrc2=size=160x288:rate=30','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t','0.5','-c:v','libx264','-c:a','aac','-timecode','00:00:00:00',...(kind==='meta'?['-movflags','+faststart']:[]),p]);
+  const src=await readFile(p);
+  // Retag only the existing data-track handler for meta/mdta selection fixtures.
+  const moov=find(src,'moov');
+  for(const tr of scan(src,moov.o+moov.h,moov.o+moov.n).filter(b=>b.type==='trak')){
+   const mdia=scan(src,tr.o+tr.h,tr.o+tr.n).find(b=>b.type==='mdia');
+   const hdlr=scan(src,mdia.o+mdia.h,mdia.o+mdia.n).find(b=>b.type==='hdlr');
+   if(src.toString('latin1',hdlr.o+16,hdlr.o+20)==='tmcd')src.write(kind,hdlr.o+16);
+  }
+  await writeFile(p,src);
+  const f=new File([src],'camera.mov');const info=await inspectIstanbulSource(f);
+  assert.equal(info.audioFallbackSelected,false);assert.equal(info.metadataTracksExcluded,1);
+  const prepared=await prepareSpatialAacFallback(f),dst=Buffer.from(await prepared.file.arrayBuffer());
+  assert.deepEqual(payload(src,find(src,'mdat')),payload(dst,find(dst,'mdat')));
+  const selected=join(dir,'selected.mov');await writeFile(selected,dst);
+  const packets=(path,select)=>JSON.parse(execFileSync('ffprobe',['-v','quiet','-select_streams',select,'-show_packets','-show_data_hash','sha256','-show_entries','packet=pts_time,dts_time,data_hash','-of','json',path],{maxBuffer:10*1024*1024})).packets;
+  for(const stream of ['v:0','a:0'])assert.deepEqual(packets(selected,stream),packets(p,stream));
+  assert.equal((await prepareSpatialAacFallback(prepared.file)).file,prepared.file);
+  const forged=await createIstanbulReplica(f);const fixed=await matchIstanbulVideoTiming(forged.file);
+  assert.equal((await inspectIstanbulSource(fixed.file)).extraVideoSamples,8200);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});

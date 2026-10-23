@@ -1,4 +1,4 @@
-import {inspectIstanbulSource,createIstanbulReplica,matchIstanbulVideoTiming,prepareSpatialAacFallback} from './istanbul-mode.mjs?v=4';
+import {inspectIstanbulSource,createIstanbulReplica,matchIstanbulVideoTiming,prepareSpatialAacFallback} from './istanbul-mode.mjs?v=5';
 export const METHODS=Object.freeze({
  istanbul:{name:'Istanbul',help:'يحافظ على الصورة والصوت والفريمات. يحتاج فيديو H.264 مع صوت AAC.'},
  haze:{name:'Haze',help:'طريقة Haze 5.2 السابقة. قد تحوّل الفيديو إلى H.264 و30 فريم حسب المصدر.'},

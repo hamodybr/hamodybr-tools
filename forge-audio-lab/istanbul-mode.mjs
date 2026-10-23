@@ -128,7 +128,7 @@ export async function inspectIstanbulSource(file){const prepared=await prepareSp
 export async function createIstanbulReplica(file,onProgress=()=>{}){
  const prepared=await prepareSpatialAacFallback(file);file=prepared.file;
  onProgress(.1);const x=await analyze(file);const {a,m,mdat,v}=x;
- if(x.already){onProgress(1);return {file,report:{...summary(x),...prepared.report,unchanged:!prepared.report.audioFallbackSelected,mediaBytesPreserved:true}};}
+ if(x.already){onProgress(1);return {file,report:{...summary(x),...prepared.report,unchanged:!prepared.report.preparationChanged,mediaBytesPreserved:true}};}
  const extra=ISTANBUL_EXTRA_SAMPLES;
  function rebuild(b){
   if(containers.has(b.type)){const list=kids(a,b);return box(b.type,join([...list.map(rebuild),...(list.padding?[list.padding]:[])]));}
@@ -264,6 +264,7 @@ export async function matchIstanbulVideoTiming(file){
 
 // iPhone Spatial Audio movies carry a separate AAC stereo compatibility track.
 // Select that existing track without decoding APAC or re-encoding any media.
+// Ordinary files may also carry meta/mdta/tmcd auxiliary tracks without APAC.
 export async function prepareSpatialAacFallback(file){
  if(!file||typeof file.slice!=='function')return {file,report:{audioFallbackSelected:false}};
  const top=await topBoxes(file),ms=top.filter(b=>b.type==='moov'),ds=top.filter(b=>b.type==='mdat');
@@ -277,16 +278,19 @@ export async function prepareSpatialAacFallback(file){
   const entries=boxes(a,stsd.start+16,stsd.end,{padding:true,context:'stsd'});
   return {tr,kind,codec:entries.length===1?entries[0].type:null,entry:entries[0]};
  });
- if(!tracks.some(t=>t.kind==='soun'&&t.codec==='apac'))return {file,report:{audioFallbackSelected:false}};
+ const hasSpatial=tracks.some(t=>t.kind==='soun'&&t.codec==='apac');
+ const metadata=tracks.filter(t=>['meta','mdta','tmcd'].includes(t.kind));
+ if(!hasSpatial&&!metadata.length)return {file,report:{audioFallbackSelected:false,preparationChanged:false}};
+ if(tracks.some(t=>!['vide','soun','meta','mdta','tmcd'].includes(t.kind)))fail('الفيديو يحتوي مسارات إضافية غير مدعومة. أرسل الملف داخل ZIP لفحصه.');
  const videos=tracks.filter(t=>t.kind==='vide');
  const audios=tracks.filter(t=>t.kind==='soun');
  const aac=audios.filter(t=>{
   if(t.codec!=='mp4a'||t.entry.size<36)return false;
   const version=view(a).getUint16(t.entry.start+16);
   const channels=version===2&&t.entry.size>=52?u32(a,t.entry.start+48):view(a).getUint16(t.entry.start+24);
-  return channels===2;
+  return !hasSpatial||channels===2;
  });
- if(aac.length!==1)fail('هذا الفيديو يحتوي APAC، لكن ما لقينا مسار AAC ستيريو مرافق واحد. أرسل الفيديو داخل ZIP لفحصه؛ لن نستبدل الصوت بصمت.');
+ if(aac.length!==1)fail(hasSpatial?'هذا الفيديو يحتوي APAC، لكن ما لقينا مسار AAC ستيريو مرافق واحد. أرسل الفيديو داخل ZIP لفحصه؛ لن نستبدل الصوت بصمت.':'الفيديو يحتاج مسار صوت AAC واحد واضح حتى نفصل مسارات البيانات الإضافية.');
  if(videos.length!==1||audios.some(t=>!['mp4a','apac'].includes(t.codec)))fail('مسارات Spatial Audio في هذا الملف غير مدعومة. أرسل الملف داخل ZIP.');
  const selected=new Set([videos[0].tr.start,aac[0].tr.start]);
  function rewrite(b){
@@ -295,7 +299,7 @@ export async function prepareSpatialAacFallback(file){
    for(const c of list){
     if(c.type==='tref')continue; // References to the removed spatial/metadata tracks.
     const bytes=a.slice(c.start,c.end);
-    if(b.start===aac[0].tr.start&&c.type==='tkhd'){
+    if(hasSpatial&&b.start===aac[0].tr.start&&c.type==='tkhd'){
      bytes[11]|=1;const alternate=bytes[8]===1?54:42;
      if(bytes.length<alternate+2)fail('Invalid audio track header');view(bytes).setUint16(alternate,0);
     }
@@ -323,5 +327,5 @@ export async function prepareSpatialAacFallback(file){
  relocate(boxes(moov)[0]);
  const out=new File(top.map(b=>b===m?moov:file.slice(b.start,b.end)),file.name||'video.mov',{type:file.type||'video/quicktime'});
  // Each caller validates its selected codecs/tables after this lossless selection.
- return {file:out,report:{audioFallbackSelected:true,selectedAudioCodec:'aac',audioTranscoded:false,videoTranscoded:false,spatialAudioExcluded:true}};
+ return {file:out,report:{audioFallbackSelected:hasSpatial,preparationChanged:true,metadataTracksExcluded:metadata.length,selectedAudioCodec:'aac',audioTranscoded:false,videoTranscoded:false,spatialAudioExcluded:hasSpatial}};
 }

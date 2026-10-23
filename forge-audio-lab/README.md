@@ -194,3 +194,15 @@ and timecode metadata. They verify unchanged media bytes and packet hashes/
 timestamps for selected video/AAC, idempotency and APAC-without-AAC rejection.
 The APAC-tagged fixtures test selection, not actual APAC decoding. The user's
 IMG_6719.mov has not been supplied; native iPhone confirmation remains needed.
+
+### Auxiliary metadata without Spatial Audio
+
+The preparation trigger also handles recognized meta, mdta and tmcd tracks in
+ordinary one-video/one-AAC movies, even when there is no APAC. Previously these
+files bypassed preparation and failed the strict two-track analyzer. The same
+lossless track-selection path now omits those auxiliary track declarations and
+references while retaining all mdat bytes. AAC mono/stereo is retained when no
+spatial fallback selection is required. Unknown track kinds and ambiguous audio
+remain rejected. Twelve local tests pass, including each auxiliary handler kind,
+both relevant moov layouts, exact A/V packet hashes and DTS/PTS, idempotency and
+the complete Istanbul pattern plus terminal-timing correction.
