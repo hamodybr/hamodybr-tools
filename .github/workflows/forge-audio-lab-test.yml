@@ -43,6 +43,6 @@ jobs:
           PY
           node --check /tmp/forge-lab-ui.mjs
       - name: Validate Istanbul container experiment
-        run: node --test forge-audio-lab/istanbul-mode.test.mjs
+        run: node --test forge-audio-lab/istanbul-mode.test.mjs forge-audio-lab/processing-methods.test.mjs
       - name: Run container and large-file tests
         run: node --test forge-audio-lab/test-large.mjs forge-audio-lab/test-hevc.mjs forge-audio-lab/test-hlg.mjs

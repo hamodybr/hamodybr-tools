@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {createIstanbulReplica,inspectIstanbulSource} from './istanbul-mode.mjs';
+import {createIstanbulReplica,inspectIstanbulSource,matchIstanbulVideoTiming} from './istanbul-mode.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 function scan(a,start=0,end=a.length){const out=[];for(let o=start;o<end;){let n=a.readUInt32BE(o),h=8;if(n===1){n=Number(a.readBigUInt64BE(o+8));h=16;}if(!n)n=end-o;out.push({type:a.toString('latin1',o+4,o+8),o,n,h});o+=n;}return out;}
 function find(a,type){let result;function walk(start,end){for(const b of scan(a,start,end)){if(b.type===type){result=b;return;}if(['moov','trak','mdia','minf','stbl'].includes(b.type))walk(b.o+b.h,b.o+b.n);if(result)return;}}walk(0,a.length);return result;}
@@ -27,10 +27,19 @@ for(const fast of [true,false])test('preserve media and timing, '+(fast?'faststa
   // Use a second, independent demuxer to check actual packets still match;
   // intentional phantom packets are distinguishable by their eight-byte size.
   const op=join(dir,'output.mp4');await writeFile(op,dst);
-  const packets=path=>JSON.parse(execFileSync('ffprobe',['-v','quiet','-show_packets','-show_data_hash','sha256','-show_entries','packet=stream_index,size,data_hash','-of','json',path],{maxBuffer:10*1024*1024})).packets;
+  const packets=path=>JSON.parse(execFileSync('ffprobe',['-v','quiet','-show_packets','-show_data_hash','sha256','-show_entries','packet=stream_index,size,data_hash,pts_time,dts_time','-of','json',path],{maxBuffer:10*1024*1024})).packets;
   const before=packets(p),after=packets(op);
   assert.deepEqual(after.filter(x=>x.stream_index===0&&Number(x.size)>8),before.filter(x=>x.stream_index===0));
   assert.deepEqual(after.filter(x=>x.stream_index===1),before.filter(x=>x.stream_index===1));
+  const timed=await matchIstanbulVideoTiming(out),tp=join(dir,'timed.mp4');
+  await writeFile(tp,Buffer.from(await timed.file.arrayBuffer()));
+  const afterTiming=packets(tp);
+  assert.deepEqual(afterTiming.filter(x=>x.stream_index===0&&Number(x.size)>8),before.filter(x=>x.stream_index===0));
+  assert.deepEqual(afterTiming.filter(x=>x.stream_index===1),before.filter(x=>x.stream_index===1));
+  const ghost=afterTiming.filter(x=>x.stream_index===0&&Number(x.size)===8);
+  assert.equal(ghost.length,8200);
+  assert.ok(Number(ghost.at(-1).dts_time)-Number(ghost[0].dts_time)<0.092);
+  assert.equal((await matchIstanbulVideoTiming(timed.file)).file,timed.file);
   // A malformed sample count must fail rather than create a second mutation.
   const bad=Buffer.from(src),bs=find(bad,'stsz');bad.writeUInt32BE(bad.readUInt32BE(bs.o+16)+1,bs.o+16);
   await assert.rejects(createIstanbulReplica(new File([bad],'bad.mp4')));
@@ -72,9 +81,15 @@ test('QuickTime MOV version-1 AAC, nested wave and preserved zero padding',async
   await assert.rejects(inspectIstanbulSource(new File([padded(src,true)],'bad.mov')),/تعذّر قراءة/);
   const mp4a=src.indexOf(Buffer.from('mp4a'));assert.equal(src.readUInt16BE(mp4a+12),1);
   const outputPath=join(dir,'output.mp4');await writeFile(outputPath,dst);
-  const packets=path=>JSON.parse(execFileSync('ffprobe',['-v','quiet','-show_packets','-show_data_hash','sha256','-show_entries','packet=stream_index,size,data_hash','-of','json',path],{maxBuffer:10*1024*1024})).packets;
+  const packets=path=>JSON.parse(execFileSync('ffprobe',['-v','quiet','-show_packets','-show_data_hash','sha256','-show_entries','packet=stream_index,size,data_hash,pts_time,dts_time','-of','json',path],{maxBuffer:10*1024*1024})).packets;
   const a=packets(p),b=packets(outputPath);
   assert.deepEqual(b.filter(x=>x.stream_index===0&&Number(x.size)>8),a.filter(x=>x.stream_index===0));
   assert.deepEqual(b.filter(x=>x.stream_index===1),a.filter(x=>x.stream_index===1));
+  const corrected=await matchIstanbulVideoTiming(out),timedPath=join(dir,'timing.mp4');
+  await writeFile(timedPath,Buffer.from(await corrected.file.arrayBuffer()));
+  const cp=packets(timedPath);
+  assert.deepEqual(cp.filter(x=>x.stream_index===0&&Number(x.size)>8),a.filter(x=>x.stream_index===0));
+  assert.deepEqual(cp.filter(x=>x.stream_index===1),a.filter(x=>x.stream_index===1));
+
  }finally{await rm(dir,{recursive:true,force:true});}
 });

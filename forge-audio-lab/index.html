@@ -80,6 +80,15 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
  h1{font-size:32px}.hero p{font-size:14px}.steps{gap:2px}.step{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.method-picker{margin:0 0 16px;padding:0;border:0;min-width:0}
+.method-picker legend{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--muted)}
+.method-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.method-option{position:relative;cursor:pointer;min-height:52px;display:flex;align-items:center;justify-content:center;gap:9px;border-radius:14px;background:var(--card2);border:1px solid var(--line);font-size:16px;font-weight:750}
+.method-option:has(input:checked){border-color:var(--good);background:#14231c;color:var(--good)}
+.method-option:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:3px}
+.method-option:has(input:disabled){opacity:.6;cursor:wait}
+.method-option input{accent-color:var(--good);width:16px;height:16px;margin:0}
+.method-help{font-size:12px;line-height:1.8;color:var(--muted);margin:10px 2px 0}
 </style>
 </head>
 <body>
@@ -88,10 +97,18 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
 
   <section class="hero">
     <h1>فيديو جاهز للنشر<br>بخطوة واحدة</h1>
-    <p>اختار الفيديو واضغط تحسين. الباقي يصير تلقائيًا على جهازك.</p>
+    <p>اختار الطريقة والفيديو، وجهّز نسختك على جهازك.</p>
   </section>
 
   <section class="panel">
+    <fieldset class="method-picker" id="methodPicker">
+      <legend>طريقة تجهيز الفيديو</legend>
+      <div class="method-options">
+        <label class="method-option"><input type="radio" name="method" value="istanbul" checked><span dir="ltr">Istanbul</span></label>
+        <label class="method-option"><input type="radio" name="method" value="haze"><span dir="ltr">Haze</span></label>
+      </div>
+      <p id="methodHelp" class="method-help"></p>
+    </fieldset>
     <label class="picker" id="picker" tabindex="0" aria-label="اختيار فيديو">
       <input id="source" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
       <span>
@@ -111,7 +128,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
         <div id="fileName" class="file-name"></div>
         <div id="fileMeta" class="file-meta"></div>
       </div>
-      <div class="check">✓</div>
+      <div class="check" id="fileCheck" aria-label="حالة فحص الملف">…</div>
     </div>
 
     <button id="run" class="primary" type="button" disabled>تحسين الفيديو</button>
@@ -140,7 +157,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
         <a id="download" class="action" href="#">حفظ الفيديو</a>
         <button id="share" class="secondary" type="button" hidden>مشاركة</button>
       </div>
-      <button id="newVideo" class="secondary new-video" type="button">تحسين فيديو جديد</button>
+      <button id="newVideo" class="secondary new-video" type="button">اختيار فيديو جديد</button>
     </div>
   </section>
 
@@ -149,17 +166,33 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
     <span>المعالجة تتم على جهازك — الفيديو لا يتم رفعه للسيرفر</span>
   </div>
 
-  <p style="text-align:center;margin-top:24px"><a href="./istanbul.html" style="color:#949ca8">تجربة Istanbul — بدون إعادة ترميز</a></p>
+
   <footer>HAMODYBR VIDEO</footer>
 </main>
 
 <script type="module">
-import {inspectHaze52Source,createHaze52Replica} from './haze52-mode.mjs?v=4';
+import {METHODS,validMethod,inspectMethod,processMethod} from './processing-methods.mjs?v=1';
 
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
-let chosen=null,info=null,busy=false,downloadUrl=null,previewUrl=null,outputFile=null,serial=0;
+let sourceFile=null,chosen=null,info=null,busy=false,downloadUrl=null,previewUrl=null,outputFile=null,serial=0;
 
+let storedMethod=null;
+try{storedMethod=localStorage.getItem('hamodybr-video-method');}catch{}
+const requested=new URLSearchParams(location.search).get('method');
+let method=validMethod(requested)?requested:validMethod(storedMethod)?storedMethod:'istanbul';
+function updateMethod(){
+ for(const radio of document.querySelectorAll('input[name="method"]'))radio.checked=radio.value===method;
+ $('methodHelp').textContent=METHODS[method].help;
+ $('run').textContent='تجهيز نسخة '+METHODS[method].name;
+}
+updateMethod();
+for(const radio of document.querySelectorAll('input[name="method"]'))radio.addEventListener('change',()=>{
+ if(busy||!radio.checked)return;
+ method=radio.value;updateMethod();
+ try{localStorage.setItem('hamodybr-video-method',method);}catch{}
+ inspectFile(sourceFile);
+});
 function setStatus(message,error=false){
   $('status').textContent=message;
   $('status').classList.toggle('error',error);
@@ -208,8 +241,10 @@ function showPreview(file){
 function refresh(){
   $('run').disabled=busy||!chosen||!info;
   $('source').disabled=busy;
+  for(const radio of document.querySelectorAll('input[name="method"]'))radio.disabled=busy;
 }
 function friendlyStage(stage){
+  if(stage==='timing')return 'جاري تطبيق توقيت Istanbul…';
   if(stage==='refinery')return 'جاري تجهيز الفيديو…';
   if(stage==='aac-copy')return 'جاري تجهيز الصوت…';
   if(stage==='x9')return 'جاري التحسين…';
@@ -219,11 +254,14 @@ function friendlyStage(stage){
 
 async function inspectFile(file){
   const token=++serial;
+  sourceFile=file;
+  const inspectingMethod=method;
   chosen=null;info=null;clearResult();resetProgress();clearPreview();
   $('fileCard').hidden=true;
   refresh();
   if(!file){setStatus('اختار فيديو للبدء.');return;}
 
+  $('fileCheck').textContent='…';$('fileCheck').style.color='var(--muted)';
   $('fileName').textContent=file.name||'video';
   $('fileMeta').textContent=fmt(file.size)+' • جاري الفحص…';
   $('fileCard').hidden=false;
@@ -233,17 +271,19 @@ async function inspectFile(file){
 
   try{
     await new Promise(resolve=>requestAnimationFrame(resolve));
-    const value=await inspectHaze52Source(file);
+    const value=await inspectMethod(file,inspectingMethod);
     if(token!==serial)return;
     chosen=file;info=value;
+    $('fileCheck').textContent='✓';$('fileCheck').style.color='var(--good)';
     const fps=Number.isFinite(value.frameRate)?Math.round(value.frameRate)+' FPS':'Video';
     $('fileMeta').textContent=fmt(file.size)+' • '+value.width+'×'+value.height+' • '+fps;
     resetProgress();
-    setStatus('جاهز. اضغط تحسين الفيديو للبدء.');
+    setStatus('جاهز لطريقة '+METHODS[inspectingMethod].name+'.');
   }catch(e){
     if(token!==serial)return;
     resetProgress();
     $('fileMeta').textContent=fmt(file.size);
+    $('fileCheck').textContent='!';$('fileCheck').style.color='var(--bad)';
     setStatus(e?.message||'هذا الفيديو غير مدعوم.',true);
   }finally{
     if(token===serial)refresh();
@@ -274,7 +314,7 @@ $('run').addEventListener('click',async()=>{
   setStatus('لا تغلق الصفحة أثناء تجهيز الفيديو.');
 
   try{
-    const result=await createHaze52Replica(chosen,(fraction,stage)=>{
+    const result=await processMethod(chosen,method,(fraction,stage)=>{
       setProgress(fraction*100,friendlyStage(stage));
     });
     outputFile=result.file;
@@ -282,7 +322,7 @@ $('run').addEventListener('click',async()=>{
     $('download').href=downloadUrl;
     $('download').download=outputFile.name;
     $('share').hidden=!(navigator.share&&navigator.canShare);
-    $('resultMeta').textContent=fmt(outputFile.size)+' • جاهز للحفظ أو المشاركة';
+    $('resultMeta').textContent=METHODS[method].name+' • '+fmt(outputFile.size)+' • جاهز للحفظ أو المشاركة';
     $('result').hidden=false;
     setProgress(100,'اكتمل');
     setStatus('اكتملت المعالجة بنجاح.');
@@ -297,7 +337,7 @@ $('run').addEventListener('click',async()=>{
 $('newVideo').addEventListener('click',()=>{
   if(busy)return;
   ++serial;
-  chosen=null;info=null;
+  sourceFile=null;chosen=null;info=null;
   $('source').value='';
   $('fileCard').hidden=true;
   clearPreview();clearResult();resetProgress();
