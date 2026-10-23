@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {createIstanbulReplica,inspectIstanbulSource,matchIstanbulVideoTiming} from './istanbul-mode.mjs';
+import {createIstanbulReplica,inspectIstanbulSource,matchIstanbulVideoTiming,prepareSpatialAacFallback} from './istanbul-mode.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 function scan(a,start=0,end=a.length){const out=[];for(let o=start;o<end;){let n=a.readUInt32BE(o),h=8;if(n===1){n=Number(a.readBigUInt64BE(o+8));h=16;}if(!n)n=end-o;out.push({type:a.toString('latin1',o+4,o+8),o,n,h});o+=n;}return out;}
 function find(a,type){let result;function walk(start,end){for(const b of scan(a,start,end)){if(b.type===type){result=b;return;}if(['moov','trak','mdia','minf','stbl'].includes(b.type))walk(b.o+b.h,b.o+b.n);if(result)return;}}walk(0,a.length);return result;}
@@ -91,5 +91,33 @@ test('QuickTime MOV version-1 AAC, nested wave and preserved zero padding',async
   assert.deepEqual(cp.filter(x=>x.stream_index===0&&Number(x.size)>8),a.filter(x=>x.stream_index===0));
   assert.deepEqual(cp.filter(x=>x.stream_index===1),a.filter(x=>x.stream_index===1));
 
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+for(const apacFirst of [true,false])test('Spatial Audio selects existing AAC with APAC '+(apacFirst?'first':'second'),async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'istanbul-spatial-'));
+ try{
+  const path=join(dir,'spatial.mov');
+  execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','testsrc2=size=160x288:rate=30','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t','0.5','-map','0:v','-map','1:a','-map','1:a','-c:v','libx264','-c:a','aac','-timecode','00:00:00:00',...(apacFirst?['-movflags','+faststart']:[]),path]);
+  const src=await readFile(path),moov=find(src,'moov'),root=scan(src,moov.o+moov.h,moov.o+moov.n);
+  const tracks=root.filter(b=>b.type==='trak');
+  function description(tr){const md=scan(src,tr.o+tr.h,tr.o+tr.n).find(b=>b.type==='mdia');const minf=scan(src,md.o+md.h,md.o+md.n).find(b=>b.type==='minf');const stbl=scan(src,minf.o+minf.h,minf.o+minf.n).find(b=>b.type==='stbl');return scan(src,stbl.o+stbl.h,stbl.o+stbl.n).find(b=>b.type==='stsd');}
+  const audio=tracks.map(description).filter(b=>src.toString('latin1',b.o+20,b.o+24)==='mp4a');assert.equal(audio.length,2);
+  // APAC-tagged fixture only models selection/routing. No APAC decoder is used.
+  const excluded=audio[apacFirst?0:1];src.write('apac',excluded.o+20);await writeFile(path,src);
+  const f=new File([src],'spatial.mov');const prepared=await prepareSpatialAacFallback(f);
+  assert.equal(prepared.report.audioFallbackSelected,true);assert.equal(prepared.report.audioTranscoded,false);
+  const dst=Buffer.from(await prepared.file.arrayBuffer());assert.deepEqual(payload(src,find(src,'mdat')),payload(dst,find(dst,'mdat')));
+  assert.equal((await inspectIstanbulSource(f)).audioFallbackSelected,true);
+  const target=join(dir,'selected.mov');await writeFile(target,dst);
+  const packet=(p,select)=>JSON.parse(execFileSync('ffprobe',['-v','quiet','-select_streams',select,'-show_packets','-show_data_hash','sha256','-show_entries','packet=pts_time,dts_time,data_hash','-of','json',p],{maxBuffer:10*1024*1024})).packets;
+  assert.deepEqual(packet(target,'v:0'),packet(path,'v:0'));
+  assert.deepEqual(packet(target,'a:0'),packet(path,apacFirst?'a:1':'a:0'));
+  const forged=await createIstanbulReplica(f);assert.equal(forged.report.audioFallbackSelected,true);
+  const fixed=await matchIstanbulVideoTiming(forged.file);assert.ok(fixed.file.size>0);
+  // The fallback selector returns ordinary two-track output unchanged on re-entry.
+  assert.equal((await prepareSpatialAacFallback(prepared.file)).file,prepared.file);
+  const noAac=Buffer.from(src);for(const b of audio)noAac.write('apac',b.o+20);
+  await assert.rejects(prepareSpatialAacFallback(new File([noAac],'only-apac.mov')),/AAC/);
  }finally{await rm(dir,{recursive:true,force:true});}
 });

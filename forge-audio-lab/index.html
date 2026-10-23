@@ -171,7 +171,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
 </main>
 
 <script type="module">
-import {METHODS,validMethod,inspectMethod,processMethod} from './processing-methods.mjs?v=1';
+import {METHODS,validMethod,inspectMethod,processMethod} from './processing-methods.mjs?v=2';
 
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
@@ -278,7 +278,7 @@ async function inspectFile(file){
     const fps=Number.isFinite(value.frameRate)?Math.round(value.frameRate)+' FPS':'Video';
     $('fileMeta').textContent=fmt(file.size)+' • '+value.width+'×'+value.height+' • '+fps;
     resetProgress();
-    setStatus('جاهز لطريقة '+METHODS[inspectingMethod].name+'.');
+    setStatus(value.audioFallbackSelected?'جاهز. راح نستخدم صوت AAC الستيريو الموجود بالفيديو بدون إعادة ترميز.':'جاهز لطريقة '+METHODS[inspectingMethod].name+'.');
   }catch(e){
     if(token!==serial)return;
     resetProgress();

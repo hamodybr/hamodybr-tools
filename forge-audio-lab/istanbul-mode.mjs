@@ -124,10 +124,11 @@ async function analyze(file){
  return {top,m,mdat,a,root,v,au,already,width:view(a).getUint16(v.entry.start+32),height:view(a).getUint16(v.entry.start+34)};
 }
 function summary(x){let ticks=0;const b=x.v.stts;for(let i=0;i<table(x.a,b,8);i++)ticks+=u32(x.a,b.start+16+8*i)*u32(x.a,b.start+20+8*i);return {frameRate:ticks?x.v.timed*x.v.timescale/ticks:null,width:x.width,height:x.height,videoSamples:x.v.timed,extraVideoSamples:x.already?ISTANBUL_EXTRA_SAMPLES:0,alreadyApplied:x.already,videoCodec:x.v.codec,audioCodec:x.au.codec};}
-export async function inspectIstanbulSource(file){return summary(await analyze(file));}
+export async function inspectIstanbulSource(file){const prepared=await prepareSpatialAacFallback(file);return {...summary(await analyze(prepared.file)),...prepared.report};}
 export async function createIstanbulReplica(file,onProgress=()=>{}){
+ const prepared=await prepareSpatialAacFallback(file);file=prepared.file;
  onProgress(.1);const x=await analyze(file);const {a,m,mdat,v}=x;
- if(x.already){onProgress(1);return {file,report:{...summary(x),unchanged:true,mediaBytesPreserved:true}};}
+ if(x.already){onProgress(1);return {file,report:{...summary(x),...prepared.report,unchanged:!prepared.report.audioFallbackSelected,mediaBytesPreserved:true}};}
  const extra=ISTANBUL_EXTRA_SAMPLES;
  function rebuild(b){
   if(containers.has(b.type)){const list=kids(a,b);return box(b.type,join([...list.map(rebuild),...(list.padding?[list.padding]:[])]));}
@@ -173,7 +174,7 @@ export async function createIstanbulReplica(file,onProgress=()=>{}){
  const name=(file.name||'video.mp4').replace(/\.[^.]+$/,'')+'-HAMODYBR-ISTANBUL.mp4';
  const out=new File(parts,name,{type:'video/mp4'});
  const checked=await analyze(out);if(!checked.already||out.size!==pos)fail('Istanbul output verification failed');
- onProgress(1);return {file:out,report:{...summary(checked),unchanged:false,mediaBytesPreserved:true,addedPayloadBytes:8,nonstandard:true,timingPreserved:true,outputBytes:out.size}};
+ onProgress(1);return {file:out,report:{...summary(checked),...prepared.report,unchanged:false,mediaBytesPreserved:true,addedPayloadBytes:8,nonstandard:true,timingPreserved:true,outputBytes:out.size}};
 }
 
 // Reproduce the reference's terminal one-tick video timing. The previous pattern
@@ -258,4 +259,69 @@ export async function matchIstanbulVideoTiming(file){
  const check=await analyze(out);
  if(!check.already||check.v.timed!==v.timed||check.v.timescale!==scale)fail('Timing verification failed');
  return {file:out,report:{referenceTiming:true,timingUnchanged:false,videoTimescale:scale,timingPreserved:false,encodedMediaPreserved:true,outputBytes:out.size}};
+}
+
+
+// iPhone Spatial Audio movies carry a separate AAC stereo compatibility track.
+// Select that existing track without decoding APAC or re-encoding any media.
+export async function prepareSpatialAacFallback(file){
+ if(!file||typeof file.slice!=='function')return {file,report:{audioFallbackSelected:false}};
+ const top=await topBoxes(file),ms=top.filter(b=>b.type==='moov'),ds=top.filter(b=>b.type==='mdat');
+ if(ms.length!==1||ds.length!==1||top.some(b=>['moof','mfra'].includes(b.type)))return {file,report:{audioFallbackSelected:false}};
+ const m=ms[0],mdat=ds[0];if(m.size>MAX_MOOV)fail('MP4 metadata too large');
+ const a=new Uint8Array(await file.slice(m.start,m.end).arrayBuffer()),root=boxes(a)[0];
+ const tracks=kids(a,root).filter(b=>b.type==='trak').map(tr=>{
+  const mdia=child(a,tr,'mdia'),kind=type(a,child(a,mdia,'hdlr').start+16);
+  if(!['vide','soun'].includes(kind))return {tr,kind};
+  const stsd=child(a,child(a,child(a,mdia,'minf'),'stbl'),'stsd');
+  const entries=boxes(a,stsd.start+16,stsd.end,{padding:true,context:'stsd'});
+  return {tr,kind,codec:entries.length===1?entries[0].type:null,entry:entries[0]};
+ });
+ if(!tracks.some(t=>t.kind==='soun'&&t.codec==='apac'))return {file,report:{audioFallbackSelected:false}};
+ const videos=tracks.filter(t=>t.kind==='vide');
+ const audios=tracks.filter(t=>t.kind==='soun');
+ const aac=audios.filter(t=>{
+  if(t.codec!=='mp4a'||t.entry.size<36)return false;
+  const version=view(a).getUint16(t.entry.start+16);
+  const channels=version===2&&t.entry.size>=52?u32(a,t.entry.start+48):view(a).getUint16(t.entry.start+24);
+  return channels===2;
+ });
+ if(aac.length!==1)fail('هذا الفيديو يحتوي APAC، لكن ما لقينا مسار AAC ستيريو مرافق واحد. أرسل الفيديو داخل ZIP لفحصه؛ لن نستبدل الصوت بصمت.');
+ if(videos.length!==1||audios.some(t=>!['mp4a','apac'].includes(t.codec)))fail('مسارات Spatial Audio في هذا الملف غير مدعومة. أرسل الملف داخل ZIP.');
+ const selected=new Set([videos[0].tr.start,aac[0].tr.start]);
+ function rewrite(b){
+  if(b.type==='trak'){
+   const list=kids(a,b);const parts=[];
+   for(const c of list){
+    if(c.type==='tref')continue; // References to the removed spatial/metadata tracks.
+    const bytes=a.slice(c.start,c.end);
+    if(b.start===aac[0].tr.start&&c.type==='tkhd'){
+     bytes[11]|=1;const alternate=bytes[8]===1?54:42;
+     if(bytes.length<alternate+2)fail('Invalid audio track header');view(bytes).setUint16(alternate,0);
+    }
+    parts.push(bytes);
+   }
+   if(list.padding)parts.push(list.padding);return box('trak',join(parts));
+  }
+  if(b.type==='moov'){
+   const list=kids(a,b),parts=list.filter(c=>c.type!=='trak'||selected.has(c.start)).map(rewrite);
+   if(list.padding)parts.push(list.padding);return box('moov',join(parts));
+  }
+  return a.slice(b.start,b.end);
+ }
+ const moov=rewrite(root),delta=m.start<mdat.start?moov.length-m.size:0;
+ function relocate(b){
+  if(['stco','co64'].includes(b.type)){
+   const step=b.type==='stco'?4:8,n=table(moov,b,step);
+   for(let i=0;i<n;i++){
+    const p=b.start+16+i*step,old=step===4?u32(moov,p):Number(view(moov).getBigUint64(p));
+    if(old<mdat.start+mdat.header||old>=mdat.end)fail('Media chunk outside mdat');
+    if(step===4)put(moov,p,old+delta);else view(moov).setBigUint64(p,BigInt(old+delta));
+   }
+  }else if(containers.has(b.type))for(const c of kids(moov,b))relocate(c);
+ }
+ relocate(boxes(moov)[0]);
+ const out=new File(top.map(b=>b===m?moov:file.slice(b.start,b.end)),file.name||'video.mov',{type:file.type||'video/quicktime'});
+ // Each caller validates its selected codecs/tables after this lossless selection.
+ return {file:out,report:{audioFallbackSelected:true,selectedAudioCodec:'aac',audioTranscoded:false,videoTranscoded:false,spatialAudioExcluded:true}};
 }

@@ -172,3 +172,25 @@ Istanbul processing path recreates the exact Mojito variant confirmed public
 by the user, byte-for-byte. Haze still invokes its existing engine directly.
 Switching methods invalidates prior results, re-inspects the selected file,
 and controls are disabled during processing. No user footage is committed.
+
+## iPhone Spatial Audio compatibility-track selection
+
+Apple describes Spatial Audio movies as containing stereo AAC, APAC spatial
+audio and playback metadata (WWDC25 session 251). The previous reader validated
+each track in order and rejected APAC before looking for the AAC compatibility
+track. Both Istanbul and Haze now select a unique existing stereo AAC track
+when APAC is present, omit spatial/metadata track declarations and dangling
+track references, enable the selected AAC, and relocate its unchanged chunks.
+The original mdat is reused byte-for-byte; nothing is decoded or re-encoded.
+Stereo compatibility playback is used rather than spatial/Audio Mix rendering.
+
+This does not add an APAC decoder. APAC-only or ambiguous AAC inputs are rejected
+with a request for the actual file. Istanbul retains its H.264 requirement;
+Haze retains its existing video preparation behavior. Plain inputs and the
+confirmed Mojito timing path remain unchanged.
+
+Two tests model APAC-tagged excluded tracks, AAC in either audio-track position,
+and timecode metadata. They verify unchanged media bytes and packet hashes/
+timestamps for selected video/AAC, idempotency and APAC-without-AAC rejection.
+The APAC-tagged fixtures test selection, not actual APAC decoding. The user's
+IMG_6719.mov has not been supplied; native iPhone confirmation remains needed.
