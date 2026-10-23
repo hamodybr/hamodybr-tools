@@ -121,3 +121,18 @@ stsc row and the shared eight-byte payload from a scratch control, then applying
 the new module, recreated the complete attached reference byte-for-byte.
 SHA256: `221be7d98f6bc1c8a752911771a1f484fd6991da4f055668e7e2d27d3cb6d333`.
 This validates replication of this structure, not a causal TikTok quality claim.
+
+### MOV reader correction
+
+The initial reader assumed an ISO version-0 audio sample entry, a direct esds
+child and no trailing bytes. QuickTime AAC may use version-1/2 sound description
+headers with esds nested under wave. The reader now uses the correct header
+length and follows wave. A short all-zero tail (less than eight bytes) at child
+box boundaries is retained verbatim; unknown nonzero tails still fail with the
+box context and offset. This does not infer that the user's screenshot alone
+identifies the exact cause in `A001_10211718_C072.mov`; that file was not attached.
+
+A real FFmpeg QuickTime H.264/AAC MOV regression plus padded visual-description
+and moov fixtures pass independent packet hash checks. Existing MP4 tests and
+the Istanbul reference roundtrip remain unchanged. HEVC/ProRes/non-AAC inputs
+receive an explicit codec message before attempting to parse media tables.

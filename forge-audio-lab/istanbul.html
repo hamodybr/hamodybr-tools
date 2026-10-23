@@ -111,7 +111,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
         <div id="fileName" class="file-name"></div>
         <div id="fileMeta" class="file-meta"></div>
       </div>
-      <div class="check">✓</div>
+      <div class="check" id="fileCheck" aria-label="حالة فحص الملف">…</div>
     </div>
 
     <p style="color:#c4ab79;font-size:13px;line-height:1.8">ملف تجريبي ببنية غير قياسية؛ قد لا يشتغل باستوديو الآيفون. احفظه في Files. جودة تيكتوك والتقطيع يحتاجان تجربة بعد النشر.</p>
@@ -155,7 +155,7 @@ footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spa
 </main>
 
 <script type="module">
-import {inspectIstanbulSource,createIstanbulReplica} from './istanbul-mode.mjs?v=1';
+import {inspectIstanbulSource,createIstanbulReplica} from './istanbul-mode.mjs?v=2';
 
 const $=id=>document.getElementById(id);
 const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
@@ -225,6 +225,7 @@ async function inspectFile(file){
   refresh();
   if(!file){setStatus('اختار فيديو للبدء.');return;}
 
+  $('fileCheck').textContent='…';$('fileCheck').style.color='var(--muted)';
   $('fileName').textContent=file.name||'video';
   $('fileMeta').textContent=fmt(file.size)+' • جاري الفحص…';
   $('fileCard').hidden=false;
@@ -237,6 +238,7 @@ async function inspectFile(file){
     const value=await inspectIstanbulSource(file);
     if(token!==serial)return;
     chosen=file;info=value;
+    $('fileCheck').textContent='✓';$('fileCheck').style.color='var(--good)';
     const fps=Number.isFinite(value.frameRate)?Math.round(value.frameRate)+' FPS':'Video';
     $('fileMeta').textContent=fmt(file.size)+' • '+value.width+'×'+value.height+' • '+fps;
     resetProgress();
@@ -245,6 +247,7 @@ async function inspectFile(file){
     if(token!==serial)return;
     resetProgress();
     $('fileMeta').textContent=fmt(file.size);
+    $('fileCheck').textContent='!';$('fileCheck').style.color='var(--bad)';
     setStatus(e?.message||'هذا الفيديو غير مدعوم.',true);
   }finally{
     if(token===serial)refresh();
