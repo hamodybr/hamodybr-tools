@@ -175,3 +175,87 @@ export async function createIstanbulReplica(file,onProgress=()=>{}){
  const checked=await analyze(out);if(!checked.already||out.size!==pos)fail('Istanbul output verification failed');
  onProgress(1);return {file:out,report:{...summary(checked),unchanged:false,mediaBytesPreserved:true,addedPayloadBytes:8,nonstandard:true,timingPreserved:true,outputBytes:out.size}};
 }
+
+// Reproduce the reference's terminal one-tick video timing. The previous pattern
+// alone inherited the input's last stts delta; demuxers extrapolated 8,200 full
+// frame durations. This is a controlled compatibility experiment, not a claim
+// about the reason TikTok locks visibility. Original encoded packets are exact.
+export async function matchIstanbulVideoTiming(file){
+ const x=await analyze(file);if(!x.already)fail('Istanbul sample pattern required before timing matching');
+ const {a,m,mdat,v}=x;
+ const gcd=(a,b)=>b?gcd(b,a%b):a;
+ const scale=v.timescale/gcd(v.timescale,90000)*90000;
+ if(!Number.isSafeInteger(scale)||scale>0xffffffff)fail('Video timescale cannot be matched losslessly');
+ const mul=scale/v.timescale;
+ const count=table(a,v.stts,8),last=v.stts.start+16+(count-1)*8;
+ if(mul===1&&u32(a,last+4)===1)return {file,report:{referenceTiming:true,timingUnchanged:true,videoTimescale:scale}};
+ const mdia=child(a,v.tr,'mdia'),mdhd=child(a,mdia,'mdhd');
+ const edts=kids(a,v.tr).find(b=>b.type==='edts');
+ const elst=edts?kids(a,edts).find(b=>b.type==='elst'):null;
+ const ctts=kids(a,v.stbl).find(b=>b.type==='ctts');
+ const cslg=kids(a,v.stbl).find(b=>b.type==='cslg');
+ const nested=new Set([...containers,'edts']);
+ function signed32(b,o,n){if(!Number.isSafeInteger(n)||n< -2147483648||n>2147483647)fail('Signed timestamp overflow');view(b).setInt32(o,n);}
+ function rewrite(b){
+  if(nested.has(b.type)){const list=kids(a,b);return box(b.type,join([...list.map(rewrite),...(list.padding?[list.padding]:[])]));}
+  if(b.start===v.stts.start){
+   const entries=[];
+   for(let i=0;i<count;i++){
+    const n=u32(a,b.start+16+i*8),d=u32(a,b.start+20+i*8)*mul;
+    if(i!==count-1)entries.push([n,d]);
+    else{if(n>1)entries.push([n-1,d]);entries.push([1,1]);}
+   }
+   const p=new Uint8Array(8+8*entries.length);p.set(a.subarray(b.start+8,b.start+12));put(p,4,entries.length);
+   entries.forEach((r,i)=>{put(p,8+i*8,r[0]);put(p,12+i*8,r[1]);});return box('stts',p);
+  }
+  if(b.start===mdhd.start){
+   const src=a.slice(b.start,b.end),ver=src[8];
+   if(ver===0){
+    const dur=u32(src,24)*mul;
+    if(dur<=0xffffffff){put(src,20,scale);put(src,24,dur);return src;}
+    const p=new Uint8Array(src.length-8+12);p.set(src.subarray(8,12));p[0]=1;
+    view(p).setBigUint64(4,BigInt(u32(src,12)));view(p).setBigUint64(12,BigInt(u32(src,16)));
+    put(p,20,scale);view(p).setBigUint64(24,BigInt(u32(src,24))*BigInt(mul));p.set(src.subarray(28),32);return box('mdhd',p);
+   }
+   if(ver!==1)fail('Unsupported mdhd version');
+   put(src,28,scale);view(src).setBigUint64(32,view(src).getBigUint64(32)*BigInt(mul));return src;
+  }
+  if(ctts&&b.start===ctts.start){
+   const out=a.slice(b.start,b.end),n=u32(out,12),ver=out[8];
+   if(![0,1].includes(ver)||out.length!==16+n*8)fail('Invalid ctts');
+   const wrapped=ver===0&&Array.from({length:n},(_,i)=>u32(out,20+i*8)).some(v=>v>0x7fffffff);
+   if(wrapped&&!cslg)fail('Unsigned composition offsets overflow; a verified QuickTime cslg is required');
+   if(wrapped)out[8]=1;
+   for(let i=0;i<n;i++){const p=20+i*8;if(ver===1||wrapped)signed32(out,p,view(out).getInt32(p)*mul);else put(out,p,u32(out,p)*mul);}return out;
+  }
+  if(cslg&&b.start===cslg.start){
+   const out=a.slice(b.start,b.end),ver=out[8],step=ver===1?8:4;
+   if(![0,1].includes(ver)||out.length!==12+step*5)fail('Invalid composition shift');
+   for(let i=0;i<5;i++){const p=12+i*step;if(ver===1)view(out).setBigInt64(p,view(out).getBigInt64(p)*BigInt(mul));else signed32(out,p,view(out).getInt32(p)*mul);}return out;
+  }
+  if(elst&&b.start===elst.start){
+   const out=a.slice(b.start,b.end),ver=out[8],n=u32(out,12),step=ver===1?20:12;
+   if(![0,1].includes(ver)||out.length!==16+n*step)fail('Invalid edit list');
+   for(let i=0;i<n;i++){
+    const p=16+i*step+(ver===1?8:4);
+    if(ver===1){const old=view(out).getBigInt64(p);if(old!==-1n)view(out).setBigInt64(p,old*BigInt(mul));}
+    else{const old=view(out).getInt32(p);if(old!==-1)signed32(out,p,old*mul);}
+   }return out;
+  }
+  return a.slice(b.start,b.end);
+ }
+ const moov=rewrite(x.root),delta=m.start<mdat.start?moov.length-m.size:0;
+ function relocate(b){
+  if(['stco','co64'].includes(b.type)){
+   const step=b.type==='stco'?4:8,n=table(moov,b,step);
+   for(let i=0;i<n;i++){const p=b.start+16+i*step,old=step===4?u32(moov,p):Number(view(moov).getBigUint64(p));
+    if(old<mdat.start+mdat.header||old>=mdat.end)fail('Unexpected media offset');
+    if(step===4)put(moov,p,old+delta);else view(moov).setBigUint64(p,BigInt(old+delta));}
+  }else if(nested.has(b.type))for(const c of kids(moov,b))relocate(c);
+ }
+ relocate(boxes(moov)[0]);
+ const out=new File(x.top.map(b=>b===m?moov:file.slice(b.start,b.end)),(file.name||'video.mp4').replace(/\.mp4$/i,'')+'-TIMING.mp4',{type:'video/mp4'});
+ const check=await analyze(out);
+ if(!check.already||check.v.timed!==v.timed||check.v.timescale!==scale)fail('Timing verification failed');
+ return {file:out,report:{referenceTiming:true,timingUnchanged:false,videoTimescale:scale,timingPreserved:false,encodedMediaPreserved:true,outputBytes:out.size}};
+}

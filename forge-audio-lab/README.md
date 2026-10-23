@@ -136,3 +136,29 @@ A real FFmpeg QuickTime H.264/AAC MOV regression plus padded visual-description
 and moov fixtures pass independent packet hash checks. Existing MP4 tests and
 the Istanbul reference roundtrip remain unchanged. HEVC/ProRes/non-AAC inputs
 receive an explicit codec message before attempting to parse media tables.
+
+### Controlled Mojito timing investigation (not enabled in the UI)
+
+The supplied Mojito result retains the Istanbul sample pattern but differs from
+the reference timing: video timescale 600 and stts `(174,24)` cause FFprobe to
+extrapolate the synthetic packets from DTS 6.88s through 334.84s. The reference's
+90,000 timebase and terminal stts `(1,1)` instead span about 0.091s.
+This measured discrepancy is not proof of TikTok's visibility decision.
+
+`matchIstanbulVideoTiming` creates a separately requested test variant, leaving
+the UI and its default behavior unchanged pending an actual upload result.
+It rescales video media times to an exact common multiple of 90,000, matches the
+last timed sample to one tick, and rescales composition offsets, cslg and edit
+list media times. QuickTime wrapped negative CTTS values with cslg are written
+as explicit signed version-1 offsets. No encoded media is changed.
+
+On the actual supplied Mojito result, independent FFprobe checks verified all
+returned video/audio packet hashes and real DTS/PTS unchanged. Whole mdat SHA256
+is also unchanged. The final synthetic packet is now at 6.931111s. The file grew
+by eight metadata bytes. This variant remains intentionally nonstandard, and
+public posting plus playback quality are unverified.
+
+The ZIP's original is HEVC 50fps, 71,631,151 bytes; its processed result is H.264
+25fps, 20,357,030 bytes. The raw Istanbul patcher refuses HEVC and does not encode,
+so those codec/frame changes predate the patch, rather than being caused by its
+sample-table additions. The specific pre-input conversion step is not known.
