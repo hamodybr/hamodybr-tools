@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<meta name="description" content="Experimental Istanbul MP4 container pattern. No video or audio re-encoding.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HAMODYBR Video">
+<link rel="manifest" href="./manifest.webmanifest?v=1">
+<link rel="icon" href="./app-icon.svg" type="image/svg+xml">
+<title>HAMODYBR · Istanbul Experiment</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b0d10;--card:#12151a;--card2:#171b21;--line:#262c34;
+  --text:#f5f7fa;--muted:#949ca8;--accent:#f5f7fa;--good:#69d59b;--bad:#ff7a7a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
+body{min-height:100dvh;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)}
+.app{width:min(100%,560px);margin:0 auto;padding:44px 0 32px}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:34px;font-weight:800;letter-spacing:.06em;font-size:13px}
+.brand-copy{display:flex;align-items:baseline;gap:7px}.brand-sub{font-weight:600;color:#737c88;letter-spacing:.02em;font-size:11px}
+.brand-mark{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 18px #69d59b80}
+.hero{text-align:center;margin-bottom:28px}
+h1{font-size:clamp(29px,8vw,42px);line-height:1.15;margin:0 0 12px;font-weight:850;letter-spacing:-.035em}
+.hero p{margin:0 auto;color:var(--muted);font-size:15px;line-height:1.7;max-width:390px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px;box-shadow:0 18px 55px #0005}
+.picker{position:relative;display:flex;min-height:170px;border:1.5px dashed #39414c;border-radius:18px;background:var(--card2);align-items:center;justify-content:center;text-align:center;padding:24px;overflow:hidden;transition:.18s ease}
+.picker:active{transform:scale(.992);border-color:#66717f}.picker.drag{border-color:var(--good);background:#17201c;box-shadow:0 0 0 3px #69d59b12 inset}
+.picker input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.pick-icon{width:48px;height:48px;margin:0 auto 14px;border-radius:15px;background:#222831;display:grid;place-items:center}
+.pick-icon svg{width:24px;height:24px}
+.pick-title{font-size:17px;font-weight:750}
+.pick-sub{font-size:13px;color:var(--muted);margin-top:6px}
+.file-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:16px}
+.preview{position:relative;flex:0 0 58px;width:58px;height:58px;border-radius:12px;overflow:hidden;background:#222831}
+.preview video{width:100%;height:100%;object-fit:cover;display:block}
+.preview-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:16px;background:#222831}
+.preview.ready .preview-fallback{display:none}
+.file-info{min-width:0;flex:1}
+.file-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:right}
+.file-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.check{flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:13px;font-weight:900}
+button,.action{width:100%;border:0;border-radius:16px;min-height:54px;font:inherit;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:.18s ease}
+.primary{margin-top:14px;background:var(--accent);color:#090b0d}
+.primary:active:not(:disabled),.action:active{transform:scale(.985)}
+.primary:disabled{opacity:.35;cursor:not-allowed}
+.progress-wrap{margin-top:17px;padding:4px 2px 0}
+.progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+.progress-label{color:#dce1e7}
+.progress-pct{color:var(--muted);direction:ltr}
+.track{height:7px;margin-top:10px;background:#232831;border-radius:999px;overflow:hidden}
+.bar{height:100%;width:0;background:var(--good);border-radius:inherit;transition:width .22s ease}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:12px}
+.step{font-size:10px;color:#606975;text-align:center;white-space:nowrap;transition:.2s ease}
+.step.active{color:#dce1e7}.step.done{color:var(--good)}
+.step-dot{width:6px;height:6px;border-radius:50%;background:#343b45;margin:0 auto 5px;transition:.2s ease}
+.step.active .step-dot{background:#dce1e7;box-shadow:0 0 0 4px #ffffff0b}
+.step.done .step-dot{background:var(--good)}
+.status{font-size:13px;color:var(--muted);line-height:1.65;margin-top:12px;text-align:center;min-height:21px}
+.status.error{color:var(--bad)}
+.result{margin-top:14px;padding:18px;background:#101b16;border:1px solid #244d38;border-radius:18px;text-align:center}
+.done-icon{width:50px;height:50px;margin:0 auto 12px;border-radius:50%;background:#183827;color:var(--good);display:grid;place-items:center;font-size:24px;font-weight:900;animation:pop .35s ease both}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.result-actions{display:grid;gap:9px}
+.new-video{margin-top:9px;background:transparent!important;border:1px solid #2b343e!important;color:#b8c0ca!important}
+.result h2{font-size:18px;margin:0 0 5px}
+.result p{font-size:13px;color:#9eb5a8;margin:0 0 15px}
+.action{background:var(--good);color:#07120c}
+.secondary{margin-top:9px;background:#20262d;color:var(--text)}
+.privacy{display:flex;align-items:center;justify-content:center;gap:7px;color:#737c88;font-size:12px;margin:18px 0 0;text-align:center}
+.privacy svg{width:14px;height:14px;flex:0 0 auto}
+footer{text-align:center;color:#515965;font-size:11px;margin-top:30px;letter-spacing:.04em}
+[hidden]{display:none!important}
+@media(max-width:420px){
+ .app{padding-top:28px}.brand{margin-bottom:28px}.hero{margin-bottom:23px}.panel{border-radius:21px;padding:13px}.picker{min-height:150px}
+ h1{font-size:32px}.hero p{font-size:14px}.steps{gap:2px}.step{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="brand"><span class="brand-mark"></span><span class="brand-copy"><span>HAMODYBR Video</span><span class="brand-sub">Optimizer</span></span></div>
+
+  <section class="hero">
+    <h1>تجربة Istanbul<br>بنفس بيانات الفيديو</h1>
+    <p>اختبار بنية Istanbul على فيديو H.264 مع صوت AAC. نحافظ على الصورة والصوت والفريمات بدون إعادة ترميز.</p>
+  </section>
+
+  <section class="panel">
+    <label class="picker" id="picker" tabindex="0" aria-label="اختيار فيديو">
+      <input id="source" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
+      <span>
+        <span class="pick-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
+          </svg>
+        </span>
+        <span class="pick-title">اختار فيديو</span>
+        <span class="pick-sub">MOV أو MP4</span>
+      </span>
+    </label>
+
+    <div id="fileCard" class="file-card" hidden>
+      <div id="preview" class="preview"><video id="previewVideo" muted playsinline preload="metadata"></video><span class="preview-fallback">▶</span></div>
+      <div class="file-info">
+        <div id="fileName" class="file-name"></div>
+        <div id="fileMeta" class="file-meta"></div>
+      </div>
+      <div class="check">✓</div>
+    </div>
+
+    <p style="color:#c4ab79;font-size:13px;line-height:1.8">ملف تجريبي ببنية غير قياسية؛ قد لا يشتغل باستوديو الآيفون. احفظه في Files. جودة تيكتوك والتقطيع يحتاجان تجربة بعد النشر.</p>
+    <button id="run" class="primary" type="button" disabled>تجهيز نسخة Istanbul</button>
+
+    <div id="progressWrap" class="progress-wrap" role="progressbar" aria-label="تقدم معالجة الفيديو" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+      <div class="progress-top">
+        <span id="progressLabel" class="progress-label">جاري التجهيز…</span>
+        <span id="progressPct" class="progress-pct">0%</span>
+      </div>
+      <div class="track"><div id="bar" class="bar"></div></div>
+      <div class="steps" aria-hidden="true">
+        <div id="step1" class="step"><div class="step-dot"></div>تجهيز</div>
+        <div id="step2" class="step"><div class="step-dot"></div>معالجة</div>
+        <div id="step3" class="step"><div class="step-dot"></div>تحسين</div>
+        <div id="step4" class="step"><div class="step-dot"></div>إنهاء</div>
+      </div>
+    </div>
+
+    <div id="status" class="status" role="status" aria-live="polite">اختار فيديو للبدء.</div>
+
+    <div id="result" class="result" hidden>
+      <div class="done-icon">✓</div>
+      <h2>الفيديو جاهز</h2>
+      <p id="resultMeta">تم التجهيز بنجاح.</p>
+      <div class="result-actions">
+        <a id="download" class="action" href="#">حفظ الفيديو</a>
+        <button id="share" class="secondary" type="button" hidden>مشاركة</button>
+      </div>
+      <button id="newVideo" class="secondary new-video" type="button">اختيار فيديو جديد</button>
+    </div>
+  </section>
+
+  <div class="privacy">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/></svg>
+    <span>المعالجة تتم على جهازك — الفيديو لا يتم رفعه للسيرفر</span>
+  </div>
+
+  <p style="text-align:center;margin-top:24px"><a href="./" style="color:#949ca8">الرجوع للوضع الأساسي</a></p>
+  <footer>HAMODYBR VIDEO</footer>
+</main>
+
+<script type="module">
+import {inspectIstanbulSource,createIstanbulReplica} from './istanbul-mode.mjs?v=1';
+
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':(n/1048576).toFixed(1)+' MB';
+let chosen=null,info=null,busy=false,downloadUrl=null,previewUrl=null,outputFile=null,serial=0;
+
+function setStatus(message,error=false){
+  $('status').textContent=message;
+  $('status').classList.toggle('error',error);
+}
+function updateSteps(n){
+  const current=n<28?1:n<70?2:n<90?3:4;
+  for(let i=1;i<=4;i++){
+    const el=$('step'+i);
+    el.classList.toggle('done',i<current||n>=100);
+    el.classList.toggle('active',i===current&&n<100);
+  }
+}
+function setProgress(value,label){
+  const n=Math.max(0,Math.min(100,Math.round(value)));
+  $('progressWrap').hidden=false;
+  $('bar').style.width=n+'%';
+  $('progressPct').textContent=n+'%';
+  $('progressWrap').setAttribute('aria-valuenow',String(n));
+  updateSteps(n);
+  if(label)$('progressLabel').textContent=label;
+}
+function clearResult(){
+  $('result').hidden=true;
+  outputFile=null;
+  if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}
+}
+function resetProgress(){
+  $('progressWrap').hidden=true;
+  $('bar').style.width='0%';
+  $('progressPct').textContent='0%';
+  $('progressWrap').setAttribute('aria-valuenow','0');
+  for(let i=1;i<=4;i++)$('step'+i).className='step';
+}
+function clearPreview(){
+  $('previewVideo').removeAttribute('src');
+  $('preview').classList.remove('ready');
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+}
+function showPreview(file){
+  clearPreview();
+  previewUrl=URL.createObjectURL(file);
+  const video=$('previewVideo');
+  video.src=previewUrl;
+  video.onloadeddata=()=>{if(previewUrl) $('preview').classList.add('ready');};
+}
+function refresh(){
+  $('run').disabled=busy||!chosen||!info;
+  $('source').disabled=busy;
+}
+function friendlyStage(stage){
+  if(stage==='refinery')return 'جاري تجهيز الفيديو…';
+  if(stage==='aac-copy')return 'جاري تجهيز الصوت…';
+  if(stage==='x9')return 'جاري تجهيز الجداول…';
+  if(stage==='container')return 'اللمسات الأخيرة…';
+  return 'جاري التحقق…';
+}
+
+async function inspectFile(file){
+  const token=++serial;
+  chosen=null;info=null;clearResult();resetProgress();clearPreview();
+  $('fileCard').hidden=true;
+  refresh();
+  if(!file){setStatus('اختار فيديو للبدء.');return;}
+
+  $('fileName').textContent=file.name||'video';
+  $('fileMeta').textContent=fmt(file.size)+' • جاري الفحص…';
+  $('fileCard').hidden=false;
+  showPreview(file);
+  setStatus('جاري فحص الفيديو…');
+  setProgress(8,'جاري فحص الفيديو…');
+
+  try{
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    const value=await inspectIstanbulSource(file);
+    if(token!==serial)return;
+    chosen=file;info=value;
+    const fps=Number.isFinite(value.frameRate)?Math.round(value.frameRate)+' FPS':'Video';
+    $('fileMeta').textContent=fmt(file.size)+' • '+value.width+'×'+value.height+' • '+fps;
+    resetProgress();
+    setStatus(value.alreadyApplied?'بصمة Istanbul موجودة؛ سنحفظ الملف كما هو.':'جاهز. الصورة والصوت سيبقيان بدون إعادة ترميز.');
+  }catch(e){
+    if(token!==serial)return;
+    resetProgress();
+    $('fileMeta').textContent=fmt(file.size);
+    setStatus(e?.message||'هذا الفيديو غير مدعوم.',true);
+  }finally{
+    if(token===serial)refresh();
+  }
+}
+$('source').addEventListener('change',()=>inspectFile($('source').files?.[0]));
+
+const picker=$('picker');
+for(const event of ['dragenter','dragover']){
+  picker.addEventListener(event,e=>{e.preventDefault();if(!busy)picker.classList.add('drag');});
+}
+for(const event of ['dragleave','drop']){
+  picker.addEventListener(event,e=>{e.preventDefault();picker.classList.remove('drag');});
+}
+picker.addEventListener('drop',e=>{
+  if(busy)return;
+  const file=e.dataTransfer?.files?.[0];
+  if(file)inspectFile(file);
+});
+picker.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&!busy){e.preventDefault();$('source').click();}
+});
+
+$('run').addEventListener('click',async()=>{
+  if(!chosen||!info||busy)return;
+  busy=true;clearResult();refresh();
+  setProgress(1,'جاري البدء…');
+  setStatus('لا تغلق الصفحة أثناء تجهيز الفيديو.');
+
+  try{
+    const result=await createIstanbulReplica(chosen,(fraction,stage)=>{
+      setProgress(fraction*100,friendlyStage(stage));
+    });
+    outputFile=result.file;
+    downloadUrl=URL.createObjectURL(outputFile);
+    $('download').href=downloadUrl;
+    $('download').download=outputFile.name;
+    $('share').hidden=!(navigator.share&&navigator.canShare);
+    $('resultMeta').textContent=fmt(outputFile.size)+(result.report.unchanged?' • البصمة موجودة والملف لم يتغير':' • أضيف نمط Istanbul وحُفظت بيانات الصورة والصوت');
+    $('result').hidden=false;
+    setProgress(100,'اكتمل');
+    setStatus('اكتملت المعالجة بنجاح.');
+  }catch(e){
+    resetProgress();
+    setStatus('تعذر تجهيز الفيديو: '+(e?.message||String(e)),true);
+  }finally{
+    busy=false;refresh();
+  }
+});
+
+$('newVideo').addEventListener('click',()=>{
+  if(busy)return;
+  ++serial;
+  chosen=null;info=null;
+  $('source').value='';
+  $('fileCard').hidden=true;
+  clearPreview();clearResult();resetProgress();
+  setStatus('اختار فيديو للبدء.');
+  refresh();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+$('share').addEventListener('click',async()=>{
+  if(!outputFile||!navigator.share)return;
+  try{
+    if(!navigator.canShare?.({files:[outputFile]}))throw new Error('المشاركة غير مدعومة لهذا الملف');
+    await navigator.share({files:[outputFile],title:'HAMODYBR Video'});
+  }catch(e){
+    if(e?.name!=='AbortError')setStatus('تعذرت المشاركة. استخدم زر حفظ الفيديو.',true);
+  }
+});
+window.addEventListener('pagehide',()=>{
+  if(downloadUrl)URL.revokeObjectURL(downloadUrl);
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
+});
+</script>
+</body>
+</html>

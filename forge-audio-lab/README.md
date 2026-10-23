@@ -77,3 +77,47 @@ Keep the previously successful Forge original as control; test this generated va
 - The earlier HEVC SDR to H.264 conversion remains available only through explicit `normalizeFragmentedFile(..., {videoMode:'avc-sdr'})` in the internal API; it is **not** the default for HDR footage and is not shown as a public automatic option.
 - Tests generate genuine 10-bit HLG BT.2020 HEVC and verify compressed video/audio bytes, video color primaries/transfer/space, two original playable streams and the 6,912-packet experimental AAC on regular and fragmented MP4s.
 - **Important**: this experiment does not reproduce Forge's full video transcode (reference Forge is H.264 SDR) and has not established whether TikTok preserves HEVC HDR playback or upload quality on the user's actual Pexels file. It deliberately avoids applying unverified SDR tone mapping.
+
+## Istanbul experiment (2026-10-23)
+
+`istanbul.html` is an opt-in, dependency-free container experiment. The stable
+optimizer remains the default. It is not an API uploader and does not reproduce
+PostPeer's account permissions or TikTok's processing decisions.
+
+Observed in the user's `Istanbul4k.MP4` (123,074,258 bytes):
+
+- H.264 High L5.2, 2160×3840, approximately 60fps, about 40.65Mbps;
+  one valid AAC-LC stereo 48kHz track. Encoder tags identify h264_qsv / Lavf.
+- 1,447 timed video samples in stts/ctts, but 9,647 entries in stsz.
+- Exactly 8,200 extra sample sizes of eight bytes, with 8,200 extra chunk offsets
+  all pointing at byte 123,074,250. The shared payload `0000000400000000` is
+  inside mdat, at the end of the file. The samples are not valid pictures.
+- The final timed video sample is one tick rather than the usual 1,500 ticks;
+  mdhd and stts duration also differ. The new mode preserves a source's existing
+  timing; it does not copy that terminal timing anomaly or force 4K/60/SDR.
+
+The mode appends one shared eight-byte payload inside mdat and extends the
+video stsz/stsc/stco (or co64) tables with the observed 8,200-entry pattern.
+It leaves stts, ctts, durations, codec configuration, original media bytes,
+frame rate, resolution and color untouched. It accepts simple nonfragmented
+H.264 with four-byte NAL lengths + MPEG-4 AAC, with exactly two media tracks.
+Indexed/fragmented or other malformed sample tables are rejected. Detection of
+an existing pattern is strict and returns the original file untouched.
+
+Output is intentionally nonstandard. iPhone Photos may reject it; use Files.
+A successful local export is not evidence of public TikTok streaming quality,
+stall-free playback, or a quality bypass. The user's successful PostPeer upload
+is an observation to test with another source through the same upload route.
+
+Validation: automated FFmpeg fixtures cover moov-first and moov-last files,
+SHA256 identity of original mdat bytes, exact video/audio packet hashes checked
+by ffprobe, unchanged timing/configuration, idempotency and malformed input.
+The actual attached Istanbul file is recognized and returned unchanged; no
+private footage is committed. Native iPhone and post-upload behavior of new
+outputs require testing.
+
+Reference roundtrip: removing only the observed 8,200 table entries, the final
+stsc row and the shared eight-byte payload from a scratch control, then applying
+the new module, recreated the complete attached reference byte-for-byte.
+SHA256: `221be7d98f6bc1c8a752911771a1f484fd6991da4f055668e7e2d27d3cb6d333`.
+This validates replication of this structure, not a causal TikTok quality claim.
